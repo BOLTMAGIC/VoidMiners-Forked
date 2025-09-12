@@ -3,6 +3,7 @@ package com.leo.voidminers.datagen;
 import com.leo.voidminers.VoidMiners;
 import com.leo.voidminers.init.ModBlocks;
 import com.leo.voidminers.init.CrystalSet;
+import com.leo.voidminers.init.SolarSet;
 import net.minecraft.data.PackOutput;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.block.Block;
@@ -50,6 +51,31 @@ public class ModBlockStateProvider extends BlockStateProvider {
 
             quadLayerBlockWithItem(set.ITEM_MOD, "voidminers:block/_core/item", "voidminers:block/_core/modifier", "voidminers:block/_core/cover", "voidminers:block/" + set.name + "/core");
         }
+        
+        // Solar panels
+        for (SolarSet set : SolarSet.sets()) {
+            simpleAllCubeWithItem(
+                set.SOLAR_CRYSTAL_BLOCK,
+                set.name
+            );
+
+            tripleLayerBlockWithItem(set.SOLAR_FRAME, "voidminers:block/" + set.name + "/frame", "voidminers:block/_core/frame", "voidminers:block/_core/cover");
+
+            // Create the miner block model for solar panels with correct path
+            BlockModelBuilder minerModel = models().cubeAll("block/" + set.name + "/miner", 
+                modLoc("block/" + set.name + "/miner"));
+            simpleBlockWithItem(set.SOLAR_PANEL_CONTROLLER.get(), minerModel);
+
+            quadLayerBlockWithItem(set.EFFICIENCY_MOD, "voidminers:block/_core/energy", "voidminers:block/_core/modifier", "voidminers:block/_core/cover", "voidminers:block/" + set.name + "/core");
+
+            quadLayerBlockWithItem(set.WEATHER_MOD, "voidminers:block/_core/speed", "voidminers:block/_core/modifier", "voidminers:block/_core/cover", "voidminers:block/" + set.name + "/core");
+
+            quadLayerBlockWithItem(set.OUTPUT_MOD, "voidminers:block/_core/item", "voidminers:block/_core/modifier", "voidminers:block/_core/cover", "voidminers:block/" + set.name + "/core");
+        }
+    }
+
+    private void blockWithItem(RegistryObject<Block> blockRegistryObject) {
+        simpleBlockWithItem(blockRegistryObject.get(), models().cubeAll(blockRegistryObject.getId().getPath(), ResourceLocation.fromNamespaceAndPath(VoidMiners.MODID, "block/" + blockRegistryObject.getId().getPath())));
     }
 
     private void simpleBlockWithItem(RegistryObject<? extends Block> block) {
@@ -101,7 +127,7 @@ public class ModBlockStateProvider extends BlockStateProvider {
     }
 
     private void simpleAllCubeWithItem(RegistryObject<Block> block, String name) {
-        simpleBlockWithItem(block.get(), models().cubeAll(name(block.get()), stripSetName(block.getId()).withPrefix("block/" + name + "/")));
+        simpleBlockWithItem(block.get(), models().cubeAll(name(block.get()), ResourceLocation.fromNamespaceAndPath(VoidMiners.MODID, "block/" + name + "/block")));
     }
 
     private String name(Block block) {

@@ -1,0 +1,9 @@
+{
+  "parent": "voidminers:block/_template/quad_layer",
+  "textures": {
+    "layer0": "voidminers:block/_core/energy",
+    "layer1": "voidminers:block/_core/modifier",
+    "layer2": "voidminers:block/_core/cover",
+    "layer3": "voidminers:block/amethystine/core"
+  }
+}

@@ -3,6 +3,7 @@ package com.leo.voidminers;
 import com.leo.voidminers.config.ConfigLoader;
 import com.leo.voidminers.init.*;
 import com.leo.voidminers.init.CrystalSet;
+import com.leo.voidminers.init.SolarSet;
 import com.leo.voidminers.network.ModNetwork;
 import com.mojang.logging.LogUtils;
 import net.minecraft.client.renderer.ItemBlockRenderTypes;
@@ -30,6 +31,7 @@ public class VoidMiners {
 
         ConfigLoader.getInstance().load();
         CrystalSet.initSets();
+        SolarSet.initSolarSets();
 
         ModItems.ITEMS.register(modEventBus);
         ModBlocks.BLOCKS.register(modEventBus);

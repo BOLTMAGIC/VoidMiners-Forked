@@ -4,6 +4,7 @@ import com.leo.voidminers.VoidMiners;
 import com.leo.voidminers.init.ModBlocks;
 import com.leo.voidminers.init.ModItems;
 import com.leo.voidminers.init.CrystalSet;
+import com.leo.voidminers.init.SolarSet;
 import net.minecraft.data.PackOutput;
 import net.minecraftforge.common.data.LanguageProvider;
 
@@ -33,6 +34,8 @@ public class ModLanguageProvider extends LanguageProvider {
         this.add("tooltip." + VoidMiners.MODID + ".controller.not_active", "Miner is assembled correctly, but is not active.\nMake sure that the miner can see the void / bedrock!\nThe distance between bedrock and miner does NOT matter, only that the center block can see bedrock!");
 
         this.add("tooltip." + VoidMiners.MODID + ".controller.missing_structure", "Miner is not assembled correctly, shift r-click the block for a guide. Total needed blocks: ");
+
+        this.add("tooltip." + VoidMiners.MODID + ".solar_panel.missing_structure", "Solar Panel is not assembled correctly, shift r-click the block for a guide. Total needed blocks: ");
 
         this.add("tooltip." + VoidMiners.MODID + ".structure.weight", "Weight: %d");
 
@@ -71,6 +74,17 @@ public class ModLanguageProvider extends LanguageProvider {
         this.add("minecraft.overworld", "Overworld");
         this.add("minecraft.the_nether", "The Nether");
         this.add("minecraft.the_end", "The End");
+        
+        // Solar panels translations
+        for (SolarSet set : SolarSet.sets()) {
+            this.add(set.SOLAR_CRYSTAL.get(), "Solar " + cFL(set.name));
+            this.add(set.SOLAR_CRYSTAL_BLOCK.get(), "Solar " + cFL(set.name) + " Block");
+            this.add(set.SOLAR_PANEL_CONTROLLER.get(), "Solar " + cFL(set.name) + " Panel");
+            this.add(set.SOLAR_FRAME.get(), "Solar " + cFL(set.name) + " Frame");
+            this.add(set.EFFICIENCY_MOD.get(), "Solar " + cFL(set.name) + " Efficiency Modifier");
+            this.add(set.WEATHER_MOD.get(), "Solar " + cFL(set.name) + " Weather Modifier");
+            this.add(set.OUTPUT_MOD.get(), "Solar " + cFL(set.name) + " Output Modifier");
+        }
     }
 
 

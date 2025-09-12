@@ -1,0 +1,6 @@
+{
+  "parent": "voidminers:block/solar_panel_base",
+  "textures": {
+    "1": "voidminers:block/ultimate/miner"
+  }
+}

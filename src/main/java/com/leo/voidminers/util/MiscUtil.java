@@ -1,6 +1,7 @@
 package com.leo.voidminers.util;
 
 import com.leo.voidminers.init.CrystalSet;
+import com.leo.voidminers.init.SolarSet;
 import net.minecraft.locale.Language;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
@@ -21,6 +22,16 @@ public class MiscUtil {
 
             tierMap.put(
                 set.name,
+                i + 1
+            );
+        }
+        
+        // Add solar panel tiers (same tier system as miners)
+        for (int i = 0; i < SolarSet.sets().size(); i++) {
+            SolarSet set = SolarSet.sets().get(i);
+
+            tierMap.put(
+                "solar_" + set.name,
                 i + 1
             );
         }
@@ -63,6 +74,11 @@ public class MiscUtil {
         colorMap.put(
             "rosarium",
             0xFFFF00FF
+        );
+
+        colorMap.put(
+            "ultimate",
+            0xFFD700FF
         );
     }
 

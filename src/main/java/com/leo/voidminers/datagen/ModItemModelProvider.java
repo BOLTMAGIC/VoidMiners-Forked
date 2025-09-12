@@ -3,6 +3,7 @@ package com.leo.voidminers.datagen;
 import com.leo.voidminers.VoidMiners;
 import com.leo.voidminers.init.ModItems;
 import com.leo.voidminers.init.CrystalSet;
+import com.leo.voidminers.init.SolarSet;
 import net.minecraft.data.PackOutput;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.Item;
@@ -24,6 +25,11 @@ public class ModItemModelProvider extends ItemModelProvider {
                 set.CRYSTAL
             );
         }
+        
+        // Solar items - use existing tier textures
+        for (SolarSet set : SolarSet.sets()) {
+            simpleItemWithTexture(set.SOLAR_CRYSTAL, set.name);
+        }
     }
 
     private void simpleItem(RegistryObject<? extends Item> item) {
@@ -34,5 +40,11 @@ public class ModItemModelProvider extends ItemModelProvider {
         withExistingParent(name,
             ResourceLocation.parse("item/generated")).texture("layer0",
             ResourceLocation.fromNamespaceAndPath(VoidMiners.MODID, "item/" + name));
+    }
+
+    private void simpleItemWithTexture(RegistryObject<? extends Item> item, String textureName) {
+        withExistingParent(item.getId().getPath(),
+            ResourceLocation.parse("item/generated")).texture("layer0",
+            ResourceLocation.fromNamespaceAndPath(VoidMiners.MODID, "item/" + textureName));
     }
 }

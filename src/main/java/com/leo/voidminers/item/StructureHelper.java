@@ -2,7 +2,9 @@ package com.leo.voidminers.item;
 
 import com.leo.voidminers.VoidMiners;
 import com.leo.voidminers.block.entity.ControllerBaseBE;
+import com.leo.voidminers.block.entity.SolarPanelBaseBE;
 import com.leo.voidminers.multiblock.MinerMultiblocks;
+import com.leo.voidminers.multiblock.SolarPanelMultiblocks;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
@@ -34,9 +36,22 @@ public class StructureHelper extends Item {
 
         BlockEntity entity = level.getBlockEntity(pos);
 
-        if(!(entity instanceof ControllerBaseBE controller)) return InteractionResult.PASS;
-        ResourceLocation structure = controller.getStructure();
-        RegisteredMultiBlockPattern multiBlock = MinerMultiblocks.MANAGER.getStructure(structure);
+        ResourceLocation structure = null;
+        RegisteredMultiBlockPattern multiBlock = null;
+
+        if (entity instanceof ControllerBaseBE controller) {
+            structure = controller.getStructure();
+            multiBlock = MinerMultiblocks.MANAGER.getStructure(structure);
+        } else if (entity instanceof SolarPanelBaseBE solarPanel) {
+            structure = solarPanel.getStructure();
+            multiBlock = SolarPanelMultiblocks.MANAGER.getStructure(structure);
+        } else {
+            return InteractionResult.PASS;
+        }
+
+        if (structure == null || multiBlock == null) {
+            return InteractionResult.PASS;
+        }
 
         if (!((ServerPlayer) pContext.getPlayer()).gameMode.isCreative()) {
             return InteractionResult.CONSUME;
