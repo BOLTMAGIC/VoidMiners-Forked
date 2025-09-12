@@ -22,6 +22,7 @@ public class CrystalSet {
     public static CrystalSet CAERIUM;
     public static CrystalSet AMETHYSTINE;
     public static CrystalSet ROSARIUM;
+    public static CrystalSet ULTIMATE;
 
 
     public final String name;
@@ -93,6 +94,7 @@ public class CrystalSet {
         CAERIUM = createSet("caerium", ModRarities.CAERIUM);
         AMETHYSTINE = createSet("amethystine", ModRarities.AMETHYSTINE);
         ROSARIUM = createSet("rosarium", ModRarities.ROSARIUM);
+        ULTIMATE = createSet("ultimate", ModRarities.ULTIMATE);
     }
 
     public static CrystalSet createSet(String name, Rarity rarity) {
@@ -119,6 +121,7 @@ public class CrystalSet {
         sets.add(CAERIUM);
         sets.add(AMETHYSTINE);
         sets.add(ROSARIUM);
+        sets.add(ULTIMATE);
 
         return sets;
     }

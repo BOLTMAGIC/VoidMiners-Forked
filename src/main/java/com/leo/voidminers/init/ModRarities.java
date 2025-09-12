@@ -12,5 +12,6 @@ public class ModRarities {
     public static Rarity CAERIUM = Rarity.create("caerium", (style -> style.withColor(0x0000FF)));
     public static Rarity AMETHYSTINE = Rarity.create("amethystine", (style -> style.withColor(0xAA00FF)));
     public static Rarity ROSARIUM = Rarity.create("rosarium", (style -> style.withColor(0xFF00FF)));
+    public static Rarity ULTIMATE = Rarity.create("ultimate", (style -> style.withColor(0xFFD700)));
 
 }

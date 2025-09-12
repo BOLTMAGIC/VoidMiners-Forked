@@ -98,6 +98,7 @@ public class ModBlockTagGenerator extends BlockTagsProvider {
     public static final TagKey<Block> FRAME_6 = create("frames/6");
     public static final TagKey<Block> FRAME_7 = create("frames/7");
     public static final TagKey<Block> FRAME_8 = create("frames/8");
+    public static final TagKey<Block> FRAME_9 = create("frames/9");
 
     public static final TagKey<Block> PANELS = create("panels");
 

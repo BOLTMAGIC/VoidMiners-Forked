@@ -30,3 +30,4 @@ run-data/
 src/generated/resources/.cache/
 gradlew
 /bin
+.claude
