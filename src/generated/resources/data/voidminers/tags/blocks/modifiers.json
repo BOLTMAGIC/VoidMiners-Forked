@@ -24,6 +24,9 @@
     "voidminers:rosarium_energy_modifier",
     "voidminers:rosarium_speed_modifier",
     "voidminers:rosarium_item_modifier",
+    "voidminers:ultimate_energy_modifier",
+    "voidminers:ultimate_speed_modifier",
+    "voidminers:ultimate_item_modifier",
     "voidminers:null_modifier"
   ]
 }

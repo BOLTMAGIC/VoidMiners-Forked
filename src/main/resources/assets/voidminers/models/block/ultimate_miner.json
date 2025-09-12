@@ -1,3 +1,6 @@
 {
-  "parent": "voidminers:block/ultimate/ultimate_miner"
+  "parent": "voidminers:block/miner_base",
+  "textures": {
+    "1": "voidminers:block/ultimate/miner"
+  }
 }
