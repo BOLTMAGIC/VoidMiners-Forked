@@ -41,10 +41,10 @@ public class StructureHelper extends Item {
 
         if (entity instanceof ControllerBaseBE controller) {
             structure = controller.getStructure();
-            multiBlock = MinerMultiblocks.MANAGER.getStructure(structure);
+            multiBlock = MinerMultiblocks.MANAGER.getStructure(structure.getPath());
         } else if (entity instanceof SolarPanelBaseBE solarPanel) {
             structure = solarPanel.getStructure();
-            multiBlock = SolarPanelMultiblocks.MANAGER.getStructure(structure);
+            multiBlock = SolarPanelMultiblocks.MANAGER.getStructure(structure.getPath());
         } else {
             return InteractionResult.PASS;
         }

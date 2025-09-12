@@ -24,8 +24,8 @@ import net.minecraft.world.phys.shapes.VoxelShape;
 import org.jetbrains.annotations.Nullable;
 
 public class SolarPanelBaseBlock extends BaseTransparentBlock implements EntityBlock {
-    final ResourceLocation structure;
-    final String name;
+    public final ResourceLocation structure;
+    public final String name;
 
     public SolarPanelBaseBlock(Properties pProperties, ResourceLocation structure, String name) {
         super(pProperties);
@@ -37,7 +37,9 @@ public class SolarPanelBaseBlock extends BaseTransparentBlock implements EntityB
     public void onRemove(BlockState pState, Level pLevel, BlockPos pPos, BlockState pNewState, boolean pIsMoving) {
         if (pState.getBlock() != pNewState.getBlock()) {
             BlockEntity blockEntity = pLevel.getBlockEntity(pPos);
-            ((SolarPanelBaseBE) blockEntity).drops();
+            if (blockEntity instanceof SolarPanelBaseBE solarBE) {
+                solarBE.drops();
+            }
         }
 
         super.onRemove(pState, pLevel, pPos, pNewState, pIsMoving);
@@ -51,10 +53,18 @@ public class SolarPanelBaseBlock extends BaseTransparentBlock implements EntityB
 
     @Override
     public InteractionResult use(BlockState pState, Level pLevel, BlockPos pPos, Player pPlayer, InteractionHand pHand, BlockHitResult pHit) {
-        SolarPanelBaseBE blockEntity = (SolarPanelBaseBE) pLevel.getBlockEntity(pPos);
+        BlockEntity blockEntityRaw = pLevel.getBlockEntity(pPos);
+        if (!(blockEntityRaw instanceof SolarPanelBaseBE blockEntity)) {
+            return InteractionResult.FAIL;
+        }
 
         if (pLevel.isClientSide) {
             return InteractionResult.sidedSuccess(pLevel.isClientSide());
+        }
+
+        // Ensure the solar panel is properly initialized
+        if (blockEntity.getStructure() == null) {
+            blockEntity.setup(structure, name);
         }
 
         if (pPlayer.isCrouching()) {
@@ -74,12 +84,10 @@ public class SolarPanelBaseBlock extends BaseTransparentBlock implements EntityB
     public void setPlacedBy(Level pLevel, BlockPos pPos, BlockState pState, @Nullable LivingEntity pPlacer, ItemStack pStack) {
         super.setPlacedBy(pLevel, pPos, pState, pPlacer, pStack);
 
-        SolarPanelBaseBE controller = ((SolarPanelBaseBE) pLevel.getBlockEntity(pPos));
-        if (controller == null) {
-            controller = ((SolarPanelBaseBE) this.newBlockEntity(pPos, pState));
+        BlockEntity blockEntityRaw = pLevel.getBlockEntity(pPos);
+        if (blockEntityRaw instanceof SolarPanelBaseBE controller) {
+            controller.setup(structure, name);
         }
-
-        controller.setup(structure, name);
     }
 
     @Nullable

@@ -1,6 +1,8 @@
 {
   "values": [
     "voidminers:rosarium_frame",
-    "voidminers:ultimate_frame"
+    "voidminers:ultimate_frame",
+    "voidminers:solar_rosarium_frame",
+    "voidminers:solar_ultimate_frame"
   ]
 }

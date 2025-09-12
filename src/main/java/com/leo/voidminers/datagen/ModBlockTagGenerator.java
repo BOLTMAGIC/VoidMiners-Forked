@@ -3,6 +3,7 @@ package com.leo.voidminers.datagen;
 import com.leo.voidminers.VoidMiners;
 import com.leo.voidminers.init.ModBlocks;
 import com.leo.voidminers.init.CrystalSet;
+import com.leo.voidminers.init.SolarSet;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.data.PackOutput;
@@ -88,6 +89,47 @@ public class ModBlockTagGenerator extends BlockTagsProvider {
             .add(
                 ModBlocks.NULL_MOD.get()
             );
+
+        // Add Solar Set blocks to tags
+        List<SolarSet> allSolarSets = SolarSet.sets();
+        for (int i = 0; i < allSolarSets.size(); i++) {
+            SolarSet solarSet = allSolarSets.get(i);
+            this.tag(BlockTags.MINEABLE_WITH_PICKAXE)
+                .add(
+                    solarSet.SOLAR_PANEL_CONTROLLER.get(),
+                    solarSet.SOLAR_CRYSTAL_BLOCK.get(),
+                    solarSet.SOLAR_FRAME.get(),
+                    solarSet.EFFICIENCY_MOD.get(),
+                    solarSet.WEATHER_MOD.get(),
+                    solarSet.OUTPUT_MOD.get()
+                );
+
+            this.tag(BlockTags.NEEDS_STONE_TOOL)
+                .add(
+                    solarSet.SOLAR_PANEL_CONTROLLER.get(),
+                    solarSet.SOLAR_CRYSTAL_BLOCK.get(),
+                    solarSet.SOLAR_FRAME.get(),
+                    solarSet.EFFICIENCY_MOD.get(),
+                    solarSet.WEATHER_MOD.get(),
+                    solarSet.OUTPUT_MOD.get()
+                );
+
+            // Add solar frames to frame tags
+            for (int j = 1; j < allSolarSets.size() + 1; j++) {
+                if (i + 1 >= j) {
+                    this.tag(create("frames/" + j))
+                        .add(solarSet.SOLAR_FRAME.get());
+                }
+            }
+
+            // Add solar modifiers to MODIFIERS tag
+            this.tag(MODIFIERS)
+                .add(
+                    solarSet.EFFICIENCY_MOD.get(),
+                    solarSet.WEATHER_MOD.get(),
+                    solarSet.OUTPUT_MOD.get()
+                );
+        }
     }
 
     public static final TagKey<Block> FRAME_1 = create("frames/1");

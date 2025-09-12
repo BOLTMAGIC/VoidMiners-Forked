@@ -101,33 +101,183 @@ public class ControllerBaseBE extends BlockEntity {
 
     public List<Component> getInteractionTooltip() {
         List<Component> toRet = new ArrayList<>();
+        
+        // Get base config values
+        int baseEnergyTick = ConfigLoader.getInstance().getMinerConfig(name).energyTick();
+        int baseDuration = ConfigLoader.getInstance().getMinerConfig(name).duration();
+        int energyStorage = energyHandler.getMaxEnergyStored();
+        int currentEnergy = energyHandler.getEnergyStored();
+        
+        // Calculate modifiers
+        float energyMod = 1.0f;
+        float speedMod = 1.0f;
+        float itemMod = 1.0f;
+        
+        for (Map.Entry<BlockInWorld, ConfigLoader.ModifierConfig> entry : modifierMap.entrySet()) {
+            energyMod *= entry.getValue().energy();
+            speedMod *= entry.getValue().speed();
+            itemMod *= entry.getValue().item();
+        }
 
         if(working) {
-            return List.of(Component.translatable("tooltip." + VoidMiners.MODID + ".controller.working"),
-                Component.translatable("tooltip." + VoidMiners.MODID + ".controller.energy", getRfTick()),
-                Component.translatable("tooltip." + VoidMiners.MODID + ".controller.duration", getMaxProgress()));
+            // Header with tier name and status
+            toRet.add(Component.literal("═══ ").withStyle(net.minecraft.ChatFormatting.GRAY)
+                .append(Component.literal(name.toUpperCase() + " MINER").withStyle(getTierColor()))
+                .append(Component.literal(" ═══").withStyle(net.minecraft.ChatFormatting.GRAY)));
+            
+            toRet.add(Component.literal("⚡ STATUS: ").withStyle(net.minecraft.ChatFormatting.GOLD)
+                .append(Component.literal("MINING ACTIVE").withStyle(net.minecraft.ChatFormatting.GREEN)));
+            
+            // Energy info with bar
+            String energyBar = getEnergyBar(currentEnergy, energyStorage);
+            toRet.add(Component.literal("⚡ ENERGY: ").withStyle(net.minecraft.ChatFormatting.YELLOW)
+                .append(Component.literal(String.format("%,d", currentEnergy)).withStyle(net.minecraft.ChatFormatting.WHITE))
+                .append(Component.literal(" / ").withStyle(net.minecraft.ChatFormatting.GRAY))
+                .append(Component.literal(String.format("%,d RF", energyStorage)).withStyle(net.minecraft.ChatFormatting.WHITE)));
+            
+            toRet.add(Component.literal(energyBar));
+            
+            // Consumption with modifiers
+            toRet.add(Component.literal("⚡ CONSUMPTION: ").withStyle(net.minecraft.ChatFormatting.RED)
+                .append(Component.literal(String.format("%,d RF/tick", getRfTick())).withStyle(net.minecraft.ChatFormatting.WHITE))
+                .append(getModifierText(" (", energyMod, baseEnergyTick, "×)", net.minecraft.ChatFormatting.AQUA)));
+            
+            // Duration with modifiers
+            toRet.add(Component.literal("⏱ DURATION: ").withStyle(net.minecraft.ChatFormatting.BLUE)
+                .append(Component.literal(String.format("%d ticks", getMaxProgress())).withStyle(net.minecraft.ChatFormatting.WHITE))
+                .append(getModifierText(" (", speedMod, baseDuration, "×)", net.minecraft.ChatFormatting.AQUA)));
+            
+            // Item modifier if different from 1.0
+            if (itemMod != 1.0f) {
+                toRet.add(Component.literal("📦 ITEM BOOST: ").withStyle(net.minecraft.ChatFormatting.LIGHT_PURPLE)
+                    .append(Component.literal(String.format("%.1f×", itemMod)).withStyle(net.minecraft.ChatFormatting.WHITE)));
+            }
+            
+            // Progress bar
+            float progressPercent = (float) progress / getMaxProgress();
+            String progressBar = getProgressBar(progressPercent);
+            toRet.add(Component.literal("⏳ PROGRESS: ").withStyle(net.minecraft.ChatFormatting.YELLOW)
+                .append(Component.literal(String.format("%.1f%%", progressPercent * 100)).withStyle(net.minecraft.ChatFormatting.WHITE)));
+            toRet.add(Component.literal(progressBar));
+            
+            return toRet;
         }
 
         if (active) {
-            return List.of(
-                Component.translatable("tooltip." + VoidMiners.MODID + ".controller.not_working"),
-                Component.translatable("tooltip." + VoidMiners.MODID + ".controller.energy", getRfTick())
-            );
+            toRet.add(Component.literal("═══ ").withStyle(net.minecraft.ChatFormatting.GRAY)
+                .append(Component.literal(name.toUpperCase() + " MINER").withStyle(getTierColor()))
+                .append(Component.literal(" ═══").withStyle(net.minecraft.ChatFormatting.GRAY)));
+            
+            toRet.add(Component.literal("⚠ STATUS: ").withStyle(net.minecraft.ChatFormatting.GOLD)
+                .append(Component.literal("NOT WORKING").withStyle(net.minecraft.ChatFormatting.RED)));
+            
+            toRet.add(Component.literal("❌ ISSUE: ").withStyle(net.minecraft.ChatFormatting.RED)
+                .append(Component.literal("Inventory full or insufficient energy").withStyle(net.minecraft.ChatFormatting.GRAY)));
+            
+            toRet.add(Component.literal("⚡ ENERGY: ").withStyle(net.minecraft.ChatFormatting.YELLOW)
+                .append(Component.literal(String.format("%,d", currentEnergy)).withStyle(net.minecraft.ChatFormatting.WHITE))
+                .append(Component.literal(" / ").withStyle(net.minecraft.ChatFormatting.GRAY))
+                .append(Component.literal(String.format("%,d RF", energyStorage)).withStyle(net.minecraft.ChatFormatting.WHITE)));
+            
+            toRet.add(Component.literal("⚡ REQUIRED: ").withStyle(net.minecraft.ChatFormatting.RED)
+                .append(Component.literal(String.format("%,d RF/tick", getRfTick())).withStyle(net.minecraft.ChatFormatting.WHITE)));
+            
+            return toRet;
         }
 
         if (foundStructure) {
-            return List.of(
-                Component.translatable("tooltip." + VoidMiners.MODID + ".controller.not_active")
-            );
+            toRet.add(Component.literal("═══ ").withStyle(net.minecraft.ChatFormatting.GRAY)
+                .append(Component.literal(name.toUpperCase() + " MINER").withStyle(getTierColor()))
+                .append(Component.literal(" ═══").withStyle(net.minecraft.ChatFormatting.GRAY)));
+            
+            toRet.add(Component.literal("⚠ STATUS: ").withStyle(net.minecraft.ChatFormatting.GOLD)
+                .append(Component.literal("INACTIVE").withStyle(net.minecraft.ChatFormatting.YELLOW)));
+            
+            toRet.add(Component.literal("❌ ISSUE: ").withStyle(net.minecraft.ChatFormatting.RED)
+                .append(Component.literal("Cannot see bedrock/void").withStyle(net.minecraft.ChatFormatting.GRAY)));
+            
+            toRet.add(Component.literal("💡 TIP: ").withStyle(net.minecraft.ChatFormatting.AQUA)
+                .append(Component.literal("Make sure center block has clear path to bedrock!").withStyle(net.minecraft.ChatFormatting.WHITE)));
+            
+            return toRet;
         }
 
-        toRet.add(Component.translatable("tooltip." + VoidMiners.MODID + ".controller.missing_structure") );
+        toRet.add(Component.literal("═══ ").withStyle(net.minecraft.ChatFormatting.GRAY)
+            .append(Component.literal(name.toUpperCase() + " MINER").withStyle(getTierColor()))
+            .append(Component.literal(" ═══").withStyle(net.minecraft.ChatFormatting.GRAY)));
+        
+        toRet.add(Component.literal("❌ STATUS: ").withStyle(net.minecraft.ChatFormatting.RED)
+            .append(Component.literal("STRUCTURE INCOMPLETE").withStyle(net.minecraft.ChatFormatting.DARK_RED)));
+        
+        toRet.add(Component.literal("💡 TIP: ").withStyle(net.minecraft.ChatFormatting.AQUA)
+            .append(Component.literal("Shift + Right-click for structure guide").withStyle(net.minecraft.ChatFormatting.WHITE)));
+        
+        toRet.add(Component.literal("📋 MISSING BLOCKS:").withStyle(net.minecraft.ChatFormatting.YELLOW));
 
         MiscUtil.getNeededBlocks(MiscUtil.structureMap.get(structure.toString())).forEach((string, integer) -> {
-            toRet.add(Component.literal(string + ": " + integer));
+            toRet.add(Component.literal("  • ").withStyle(net.minecraft.ChatFormatting.GRAY)
+                .append(Component.literal(string).withStyle(net.minecraft.ChatFormatting.WHITE))
+                .append(Component.literal(": ").withStyle(net.minecraft.ChatFormatting.GRAY))
+                .append(Component.literal(String.valueOf(integer)).withStyle(net.minecraft.ChatFormatting.RED)));
         });
 
         return toRet;
+    }
+    
+    private net.minecraft.ChatFormatting getTierColor() {
+        return switch (name.toLowerCase()) {
+            case "rubetine" -> net.minecraft.ChatFormatting.RED;
+            case "aurantium" -> net.minecraft.ChatFormatting.GOLD;
+            case "citrinetine" -> net.minecraft.ChatFormatting.YELLOW;
+            case "verdium" -> net.minecraft.ChatFormatting.GREEN;
+            case "azurine" -> net.minecraft.ChatFormatting.BLUE;
+            case "caerium" -> net.minecraft.ChatFormatting.DARK_BLUE;
+            case "amethystine" -> net.minecraft.ChatFormatting.DARK_PURPLE;
+            case "rosarium" -> net.minecraft.ChatFormatting.LIGHT_PURPLE;
+            case "ultimate" -> net.minecraft.ChatFormatting.DARK_RED;
+            default -> net.minecraft.ChatFormatting.WHITE;
+        };
+    }
+    
+    private Component getModifierText(String prefix, float modifier, int baseValue, String suffix, net.minecraft.ChatFormatting color) {
+        if (modifier == 1.0f) return Component.empty();
+        
+        return Component.literal(prefix).withStyle(color)
+            .append(Component.literal(String.format("%.1f", modifier)).withStyle(color))
+            .append(Component.literal(suffix).withStyle(color));
+    }
+    
+    private String getEnergyBar(int current, int max) {
+        float percent = (float) current / max;
+        int bars = (int) (percent * 20);
+        StringBuilder bar = new StringBuilder("§a");
+        
+        for (int i = 0; i < 20; i++) {
+            if (i < bars) {
+                bar.append("█");
+            } else if (i == bars && percent * 20 - bars > 0.5) {
+                bar.append("▌");
+            } else {
+                bar.append("§8▌");
+            }
+        }
+        return bar.toString() + "§r";
+    }
+    
+    private String getProgressBar(float percent) {
+        int bars = (int) (percent * 20);
+        StringBuilder bar = new StringBuilder("§e");
+        
+        for (int i = 0; i < 20; i++) {
+            if (i < bars) {
+                bar.append("█");
+            } else if (i == bars && percent * 20 - bars > 0.5) {
+                bar.append("▌");
+            } else {
+                bar.append("§8▌");
+            }
+        }
+        return bar.toString() + "§r";
     }
 
     public void updateShowStructure() {

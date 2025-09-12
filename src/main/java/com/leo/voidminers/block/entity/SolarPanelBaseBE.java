@@ -34,6 +34,8 @@ import org.jetbrains.annotations.Nullable;
 import org.mangorage.mangomultiblock.core.manager.MultiBlockManager;
 import org.mangorage.mangomultiblock.core.manager.RegisteredMultiBlockPattern;
 import org.mangorage.mangomultiblock.core.misc.MultiblockMatchResult;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -41,6 +43,8 @@ import java.util.List;
 import java.util.Map;
 
 public class SolarPanelBaseBE extends BlockEntity {
+    
+    private static final Logger LOGGER = LoggerFactory.getLogger(SolarPanelBaseBE.class);
 
     public static final int ENERGY_CAPACITY = 1000000;
 
@@ -50,7 +54,9 @@ public class SolarPanelBaseBE extends BlockEntity {
         @Override
         protected void onContentsChanged(int slot) {
             super.onContentsChanged(slot);
-            SolarPanelBaseBE.this.level.sendBlockUpdated(getBlockPos(), getBlockState(), getBlockState(), 3);
+            if (SolarPanelBaseBE.this.level != null) {
+                SolarPanelBaseBE.this.level.sendBlockUpdated(getBlockPos(), getBlockState(), getBlockState(), 3);
+            }
         }
     };
 
@@ -59,7 +65,7 @@ public class SolarPanelBaseBE extends BlockEntity {
 
     public boolean showStructure = false;
 
-    private final Map<BlockInWorld, ConfigLoader.ModifierConfig> modifierMap = new HashMap<>();
+    private final Map<BlockInWorld, ConfigLoader.SolarModifierConfig> modifierMap = new HashMap<>();
 
     private ResourceLocation structure;
     private String name;
@@ -85,51 +91,171 @@ public class SolarPanelBaseBE extends BlockEntity {
         if (lazyEnergyHandler != null) {
             lazyEnergyHandler.invalidate();
         }
-        int storage = ConfigLoader.getInstance().getMinerConfig(name).energyStorage();
+        
+        if (name == null) {
+            LOGGER.warn("Solar panel name is null, using default energy storage");
+            energyHandler = new ModEnergyStorage(ENERGY_CAPACITY, 0, ENERGY_CAPACITY, energyHandler != null ? energyHandler.getEnergyStored() : 0);
+            lazyEnergyHandler = LazyOptional.of(() -> energyHandler);
+            return;
+        }
+        
+        int storage = ConfigLoader.getInstance().getSolarPanelConfig(name).energyStorage();
 
-        if (!ConfigLoader.getInstance().ALLOW_NO_ENERGY_MINERS && storage <= 0) storage = ENERGY_CAPACITY;
-        energyHandler = new ModEnergyStorage(storage, 0, storage, energyHandler.getEnergyStored());
+        if (!ConfigLoader.getInstance().ALLOW_NO_ENERGY_SOLAR_PANELS && storage <= 0) storage = ENERGY_CAPACITY;
+        energyHandler = new ModEnergyStorage(storage, 0, storage, energyHandler != null ? energyHandler.getEnergyStored() : 0);
         lazyEnergyHandler = LazyOptional.of(() -> energyHandler);
     }
 
     public int getBeamColor() {
+        if (structure == null) return 0xFFFFFFFF;
         return MiscUtil.colorMap.getOrDefault(structure.getPath().replace("solar_", ""), 0xFFFFFFFF);
     }
 
     public List<Component> getInteractionTooltip() {
         List<Component> toRet = new ArrayList<>();
+        
+        // Get tier name from structure path (solar_rubetine -> rubetine)
+        String tierName = structure != null ? structure.getPath().replace("solar_", "") : "unknown";
+        int currentEnergy = energyHandler != null ? energyHandler.getEnergyStored() : 0;
+        int maxEnergy = energyHandler != null ? energyHandler.getMaxEnergyStored() : 0;
 
         if(working) {
-            return List.of(Component.translatable("tooltip." + VoidMiners.MODID + ".solar_panel.working"),
-                Component.translatable("tooltip." + VoidMiners.MODID + ".solar_panel.generation", getRfTick()),
-                Component.translatable("tooltip." + VoidMiners.MODID + ".solar_panel.efficiency", getSolarEfficiency() + "%"));
+            // Header with tier name and status
+            toRet.add(Component.literal("═══ ").withStyle(net.minecraft.ChatFormatting.GRAY)
+                .append(Component.literal(tierName.toUpperCase() + " SOLAR PANEL").withStyle(getTierColor(tierName)))
+                .append(Component.literal(" ═══").withStyle(net.minecraft.ChatFormatting.GRAY)));
+            
+            toRet.add(Component.literal("☀ STATUS: ").withStyle(net.minecraft.ChatFormatting.GOLD)
+                .append(Component.literal("GENERATING POWER").withStyle(net.minecraft.ChatFormatting.GREEN)));
+            
+            // Energy info
+            String energyBar = getEnergyBar(currentEnergy, maxEnergy);
+            toRet.add(Component.literal("⚡ ENERGY: ").withStyle(net.minecraft.ChatFormatting.YELLOW)
+                .append(Component.literal(String.format("%,d", currentEnergy)).withStyle(net.minecraft.ChatFormatting.WHITE))
+                .append(Component.literal(" / ").withStyle(net.minecraft.ChatFormatting.GRAY))
+                .append(Component.literal(String.format("%,d RF", maxEnergy)).withStyle(net.minecraft.ChatFormatting.WHITE)));
+            
+            toRet.add(Component.literal(energyBar));
+            
+            // Generation info
+            toRet.add(Component.literal("⚡ GENERATION: ").withStyle(net.minecraft.ChatFormatting.GREEN)
+                .append(Component.literal(String.format("%,d RF/tick", getRfTick())).withStyle(net.minecraft.ChatFormatting.WHITE)));
+            
+            // Solar efficiency
+            toRet.add(Component.literal("☀ EFFICIENCY: ").withStyle(net.minecraft.ChatFormatting.YELLOW)
+                .append(Component.literal(String.format("%.1f%%", getSolarEfficiency())).withStyle(net.minecraft.ChatFormatting.WHITE)));
+
+            return toRet;
         }
 
         if (active) {
-            return List.of(
-                Component.translatable("tooltip." + VoidMiners.MODID + ".solar_panel.not_working"),
-                Component.translatable("tooltip." + VoidMiners.MODID + ".solar_panel.generation", getRfTick())
-            );
+            toRet.add(Component.literal("═══ ").withStyle(net.minecraft.ChatFormatting.GRAY)
+                .append(Component.literal(tierName.toUpperCase() + " SOLAR PANEL").withStyle(getTierColor(tierName)))
+                .append(Component.literal(" ═══").withStyle(net.minecraft.ChatFormatting.GRAY)));
+            
+            toRet.add(Component.literal("⚠ STATUS: ").withStyle(net.minecraft.ChatFormatting.GOLD)
+                .append(Component.literal("NOT GENERATING").withStyle(net.minecraft.ChatFormatting.RED)));
+            
+            String reason = isEnergyHandlerFull() ? "Energy storage full" : 
+                           getSolarEfficiency() <= 0 ? "No sunlight (night/weather)" : "Unknown issue";
+            
+            toRet.add(Component.literal("❌ REASON: ").withStyle(net.minecraft.ChatFormatting.RED)
+                .append(Component.literal(reason).withStyle(net.minecraft.ChatFormatting.GRAY)));
+            
+            toRet.add(Component.literal("⚡ ENERGY: ").withStyle(net.minecraft.ChatFormatting.YELLOW)
+                .append(Component.literal(String.format("%,d", currentEnergy)).withStyle(net.minecraft.ChatFormatting.WHITE))
+                .append(Component.literal(" / ").withStyle(net.minecraft.ChatFormatting.GRAY))
+                .append(Component.literal(String.format("%,d RF", maxEnergy)).withStyle(net.minecraft.ChatFormatting.WHITE)));
+            
+            toRet.add(Component.literal("⚡ POTENTIAL: ").withStyle(net.minecraft.ChatFormatting.BLUE)
+                .append(Component.literal(String.format("%,d RF/tick", getRfTick())).withStyle(net.minecraft.ChatFormatting.WHITE)));
+
+            return toRet;
         }
 
         if (foundStructure) {
-            return List.of(
-                Component.translatable("tooltip." + VoidMiners.MODID + ".solar_panel.not_active")
-            );
+            toRet.add(Component.literal("═══ ").withStyle(net.minecraft.ChatFormatting.GRAY)
+                .append(Component.literal(tierName.toUpperCase() + " SOLAR PANEL").withStyle(getTierColor(tierName)))
+                .append(Component.literal(" ═══").withStyle(net.minecraft.ChatFormatting.GRAY)));
+            
+            toRet.add(Component.literal("⚠ STATUS: ").withStyle(net.minecraft.ChatFormatting.GOLD)
+                .append(Component.literal("INACTIVE").withStyle(net.minecraft.ChatFormatting.YELLOW)));
+            
+            toRet.add(Component.literal("❌ ISSUE: ").withStyle(net.minecraft.ChatFormatting.RED)
+                .append(Component.literal("No clear view to sky").withStyle(net.minecraft.ChatFormatting.GRAY)));
+            
+            toRet.add(Component.literal("💡 TIP: ").withStyle(net.minecraft.ChatFormatting.AQUA)
+                .append(Component.literal("Remove blocks above the panel").withStyle(net.minecraft.ChatFormatting.WHITE)));
+
+            return toRet;
         }
 
-        toRet.add(Component.translatable("tooltip." + VoidMiners.MODID + ".solar_panel.missing_structure") );
+        // Structure incomplete
+        toRet.add(Component.literal("═══ ").withStyle(net.minecraft.ChatFormatting.GRAY)
+            .append(Component.literal(tierName.toUpperCase() + " SOLAR PANEL").withStyle(getTierColor(tierName)))
+            .append(Component.literal(" ═══").withStyle(net.minecraft.ChatFormatting.GRAY)));
+        
+        toRet.add(Component.literal("❌ STATUS: ").withStyle(net.minecraft.ChatFormatting.RED)
+            .append(Component.literal("STRUCTURE INCOMPLETE").withStyle(net.minecraft.ChatFormatting.DARK_RED)));
+        
+        toRet.add(Component.literal("💡 TIP: ").withStyle(net.minecraft.ChatFormatting.AQUA)
+            .append(Component.literal("Shift + Right-click for structure guide").withStyle(net.minecraft.ChatFormatting.WHITE)));
+        
+        toRet.add(Component.literal("📋 MISSING BLOCKS:").withStyle(net.minecraft.ChatFormatting.YELLOW));
 
-        MiscUtil.getNeededBlocks(MiscUtil.structureMap.get(structure.toString())).forEach((string, integer) -> {
-            toRet.add(Component.literal(string + ": " + integer));
-        });
+        if (structure != null && MiscUtil.structureMap.containsKey(structure.toString())) {
+            MiscUtil.getNeededBlocks(MiscUtil.structureMap.get(structure.toString())).forEach((string, integer) -> {
+                toRet.add(Component.literal("  • ").withStyle(net.minecraft.ChatFormatting.GRAY)
+                    .append(Component.literal(string).withStyle(net.minecraft.ChatFormatting.WHITE))
+                    .append(Component.literal(": ").withStyle(net.minecraft.ChatFormatting.GRAY))
+                    .append(Component.literal(String.valueOf(integer)).withStyle(net.minecraft.ChatFormatting.RED)));
+            });
+        } else {
+            toRet.add(Component.literal("  • Structure data not available").withStyle(net.minecraft.ChatFormatting.GRAY));
+        }
 
         return toRet;
+    }
+    
+    private net.minecraft.ChatFormatting getTierColor(String tierName) {
+        return switch (tierName.toLowerCase()) {
+            case "rubetine" -> net.minecraft.ChatFormatting.RED;
+            case "aurantium" -> net.minecraft.ChatFormatting.GOLD;
+            case "citrinetine" -> net.minecraft.ChatFormatting.YELLOW;
+            case "verdium" -> net.minecraft.ChatFormatting.GREEN;
+            case "azurine" -> net.minecraft.ChatFormatting.BLUE;
+            case "caerium" -> net.minecraft.ChatFormatting.DARK_BLUE;
+            case "amethystine" -> net.minecraft.ChatFormatting.DARK_PURPLE;
+            case "rosarium" -> net.minecraft.ChatFormatting.LIGHT_PURPLE;
+            case "ultimate" -> net.minecraft.ChatFormatting.DARK_RED;
+            default -> net.minecraft.ChatFormatting.WHITE;
+        };
+    }
+    
+    private String getEnergyBar(int current, int max) {
+        if (max == 0) return "│░░░░░░░░░░│ 0%";
+        
+        double percentage = (double) current / max;
+        int filledBars = (int) (percentage * 10);
+        
+        StringBuilder bar = new StringBuilder("│");
+        for (int i = 0; i < 10; i++) {
+            if (i < filledBars) {
+                bar.append("█");
+            } else {
+                bar.append("░");
+            }
+        }
+        bar.append(String.format("│ %.1f%%", percentage * 100));
+        
+        return bar.toString();
     }
 
     public void updateShowStructure() {
         showStructure = !showStructure;
-        level.sendBlockUpdated(getBlockPos(), getBlockState(), getBlockState(), 3);
+        if (level != null) {
+            level.sendBlockUpdated(getBlockPos(), getBlockState(), getBlockState(), 3);
+        }
     }
 
     @Override
@@ -186,6 +312,12 @@ public class SolarPanelBaseBE extends BlockEntity {
     @Override
     public void onLoad() {
         super.onLoad();
+        
+        // Ensure we have a valid energy handler even if setup wasn't called yet
+        if (energyHandler == null) {
+            energyHandler = new ModEnergyStorage(ENERGY_CAPACITY, 0, ENERGY_CAPACITY, 0);
+        }
+        
         setupEnergyStorage();
         lazyEnergyHandler = LazyOptional.of(() -> energyHandler);
         lazyItemHandler = LazyOptional.of(() -> itemHandler);
@@ -238,12 +370,16 @@ public class SolarPanelBaseBE extends BlockEntity {
         checkStructure(pLevel, pPos);
 
         active = foundStructure && hasViewOnSky(pPos);
-        level.sendBlockUpdated(pPos, getBlockState(), getBlockState(), 3);
+        if (level != null) {
+            level.sendBlockUpdated(pPos, getBlockState(), getBlockState(), 3);
+        }
 
         if(!active) return;
 
         working = !isEnergyHandlerFull() && getSolarEfficiency() > 0;
-        level.sendBlockUpdated(getBlockPos(), getBlockState(), getBlockState(), 3);
+        if (level != null) {
+            level.sendBlockUpdated(getBlockPos(), getBlockState(), getBlockState(), 3);
+        }
 
         if (!working) {
             return;
@@ -269,34 +405,45 @@ public class SolarPanelBaseBE extends BlockEntity {
     }
 
     private void sync() {
-        setChanged(getLevel(), getBlockPos(), getBlockState());
+        if (level != null) {
+            setChanged(level, getBlockPos(), getBlockState());
 
-        if(level.isClientSide) return;
+            if(level.isClientSide) return;
 
-        level.sendBlockUpdated(getBlockPos(), getBlockState(), getBlockState(), Block.UPDATE_ALL);
+            level.sendBlockUpdated(getBlockPos(), getBlockState(), getBlockState(), Block.UPDATE_ALL);
+        }
     }
 
     public int getRfTick() {
+        if (name == null) {
+            LOGGER.warn("Solar panel name is null, returning 0 RF/tick");
+            return 0;
+        }
+        
         float mod = 1;
 
-        for (Map.Entry<BlockInWorld, ConfigLoader.ModifierConfig> entry : modifierMap.entrySet()) {
-            mod *= entry.getValue().energy(); // For solar panels, this becomes generation multiplier
+        for (Map.Entry<BlockInWorld, ConfigLoader.SolarModifierConfig> entry : modifierMap.entrySet()) {
+            mod *= entry.getValue().generation(); // Solar generation multiplier
         }
 
-        int baseGeneration = ConfigLoader.getInstance().getMinerConfig(name).energyTick();
+        int baseGeneration = ConfigLoader.getInstance().getSolarPanelConfig(name).energyGeneration();
         float efficiency = getSolarEfficiency() / 100.0f; // Convert percentage to decimal
 
         return (int) (baseGeneration * mod * efficiency);
     }
 
     public int getMaxProgress() {
+        if (name == null) {
+            return 100; // Default duration if name is null
+        }
+        
         float mod = 1;
 
-        for (Map.Entry<BlockInWorld, ConfigLoader.ModifierConfig> entry : modifierMap.entrySet()) {
-            mod *= entry.getValue().speed(); // For solar panels, this affects generation cycle speed
+        for (Map.Entry<BlockInWorld, ConfigLoader.SolarModifierConfig> entry : modifierMap.entrySet()) {
+            mod *= entry.getValue().efficiency(); // Solar panel cycle efficiency
         }
 
-        return (int) (ConfigLoader.getInstance().getMinerConfig(name).duration() * mod);
+        return (int) (ConfigLoader.getInstance().getSolarPanelConfig(name).duration() * mod);
     }
 
     public float getSolarEfficiency() {
@@ -332,10 +479,9 @@ public class SolarPanelBaseBE extends BlockEntity {
         }
 
         // Weather resistance modifier
-        for (Map.Entry<BlockInWorld, ConfigLoader.ModifierConfig> entry : modifierMap.entrySet()) {
-            // We can use the 'item' modifier as weather resistance for solar panels
+        for (Map.Entry<BlockInWorld, ConfigLoader.SolarModifierConfig> entry : modifierMap.entrySet()) {
             if (level.isRaining()) {
-                efficiency /= entry.getValue().item(); // Weather resistance reduces rain penalty
+                efficiency /= entry.getValue().weatherResistance(); // Weather resistance reduces rain penalty
             }
         }
 
@@ -371,14 +517,44 @@ public class SolarPanelBaseBE extends BlockEntity {
     }
 
     public void checkStructure(Level pLevel, BlockPos pPos) {
-        RegisteredMultiBlockPattern pattern = SolarPanelMultiblocks.MANAGER.findAnyStructure(pLevel, pPos, Rotation.NONE);
+        // Try to find any structure at this position
+        RegisteredMultiBlockPattern pattern = MultiBlockManager.findAnyStructure(pLevel, pPos, Rotation.NONE);
+        if (pattern == null) {
+            // If no structure found, try with other rotations
+            for (Rotation rotation : Rotation.values()) {
+                if (rotation != Rotation.NONE) {
+                    pattern = MultiBlockManager.findAnyStructure(pLevel, pPos, rotation);
+                    if (pattern != null) break;
+                }
+            }
+        }
+
         if (pattern == null) {
             foundStructure = false;
             return;
         }
 
-        MultiblockMatchResult result = pattern.pattern().matchesWithResult(pLevel, pPos, Rotation.NONE);
-        if (result == null || !pattern.ID().equals(structure)) {
+        // Check if the found pattern matches the expected structure
+        String expectedStructurePath = (structure != null ? structure.getPath() : null);
+        String foundPatternPath = pattern.ID().getPath();
+        LOGGER.info("[SOLAR DEBUG] Found pattern ID: {} (path: {}) at pos {}", pattern.ID(), foundPatternPath, pPos);
+        LOGGER.info("[SOLAR DEBUG] Expected structure path: {}", expectedStructurePath);
+
+        if (expectedStructurePath == null || !foundPatternPath.equals(expectedStructurePath)) {
+            LOGGER.info("[SOLAR DEBUG] Structure mismatch! Found: {}, Expected: {}", foundPatternPath, expectedStructurePath);
+            foundStructure = false;
+            return;
+        }
+
+        // Verify the structure actually matches with rotation support
+        MultiblockMatchResult result = null;
+        for (Rotation rotation : Rotation.values()) {
+            result = pattern.pattern().matchesWithResult(pLevel, pPos, rotation);
+            if (result != null) break;
+        }
+
+        LOGGER.info("[SOLAR DEBUG] Match result: {} for pattern {}", (result != null ? "SUCCESS" : "FAILED"), pattern.ID());
+        if (result == null) {
             foundStructure = false;
             return;
         }
@@ -386,7 +562,8 @@ public class SolarPanelBaseBE extends BlockEntity {
         modifierMap.clear();
         foundStructure = true;
         result.blocks().stream().filter(block -> block.getState().getBlock() instanceof ModifierBlock).forEach(block -> {
-            ConfigLoader.ModifierConfig modifier = ConfigLoader.getInstance().getModifierConfig(block.getState().getBlock());
+            // For solar panels, we need a method to get solar modifier config
+            ConfigLoader.SolarModifierConfig modifier = ConfigLoader.getInstance().getSolarModifierConfig(block.getState().getBlock(), name);
 
             if (!modifierMap.containsKey(block)) {
                 modifierMap.put(block, modifier);
