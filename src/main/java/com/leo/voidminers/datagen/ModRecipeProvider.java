@@ -95,6 +95,11 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
         for (int i = 0; i < allSets.size(); i++) {
             CrystalSet set = allSets.get(i);
 
+            // Skip sets without crystals (like ultimate set)
+            if (set.CRYSTAL == null) {
+                continue;
+            }
+
             ShapedRecipeBuilder.shaped(
                     RecipeCategory.MISC,
                     set.MINER_CONTROLLER.get(),

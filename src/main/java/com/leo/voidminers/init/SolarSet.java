@@ -111,7 +111,7 @@ public class SolarSet {
     public static SolarSet createSolarSet(String name, Rarity rarity) {
         return new SolarSet(
             name,
-            fastCreateSolarItem(name, rarity),
+            name.equals("ultimate") ? null : fastCreateSolarItem(name, rarity),
             fastCreateSolarBlock(name, 10, 5, rarity),
             fastCreateSolarController(name, 10, 50, rarity, ResourceLocation.fromNamespaceAndPath(VoidMiners.MODID, "solar_" + name)),
             fastCreateSolarFrame(name, 10, 50, rarity),

@@ -100,7 +100,7 @@ public class CrystalSet {
     public static CrystalSet createSet(String name, Rarity rarity) {
         return new CrystalSet(
             name,
-            fastCreateItem(name, rarity),
+            name.equals("ultimate") ? null : fastCreateItem(name, rarity),
             fastCreateBlock(name + "_block", 10, 5, rarity),
             fastCreateController(name, 10, 50, rarity, ResourceLocation.fromNamespaceAndPath(VoidMiners.MODID, name)),
             fastCreateBlock(name + "_frame", 10, 50, rarity),

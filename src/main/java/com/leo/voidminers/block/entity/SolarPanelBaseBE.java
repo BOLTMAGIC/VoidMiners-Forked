@@ -94,7 +94,7 @@ public class SolarPanelBaseBE extends BlockEntity {
 
         if (name == null) {
             LOGGER.warn("Solar panel name is null, using default energy storage");
-            energyHandler = new ModEnergyStorage(ENERGY_CAPACITY, ENERGY_CAPACITY, ENERGY_CAPACITY, energyHandler != null ? energyHandler.getEnergyStored() : 0);
+            energyHandler = new ModEnergyStorage((long)ENERGY_CAPACITY, (long)ENERGY_CAPACITY, (long)ENERGY_CAPACITY, energyHandler != null ? energyHandler.getLongEnergyStored() : 0);
             lazyEnergyHandler = LazyOptional.of(() -> energyHandler);
             return;
         }
@@ -102,16 +102,16 @@ public class SolarPanelBaseBE extends BlockEntity {
         ConfigLoader.SolarPanelConfig config = ConfigLoader.getInstance().getSolarPanelConfig(name);
         if (config == null) {
             LOGGER.warn("Solar panel config is null for {}, using default", name);
-            energyHandler = new ModEnergyStorage(ENERGY_CAPACITY, ENERGY_CAPACITY, ENERGY_CAPACITY, energyHandler != null ? energyHandler.getEnergyStored() : 0);
+            energyHandler = new ModEnergyStorage((long)ENERGY_CAPACITY, (long)ENERGY_CAPACITY, (long)ENERGY_CAPACITY, energyHandler != null ? energyHandler.getLongEnergyStored() : 0);
             lazyEnergyHandler = LazyOptional.of(() -> energyHandler);
             return;
         }
 
-        int storage = config.energyStorage();
+        long storage = config.energyStorage();
         if (!ConfigLoader.getInstance().ALLOW_NO_ENERGY_SOLAR_PANELS && storage <= 0) storage = ENERGY_CAPACITY;
 
-        // Allow both input and output for energy transfer
-        energyHandler = new ModEnergyStorage(storage, storage, storage, energyHandler != null ? energyHandler.getEnergyStored() : 0);
+        // Allow both input and output for energy transfer - use long values for high-capacity panels
+        energyHandler = new ModEnergyStorage(storage, storage, storage, energyHandler != null ? energyHandler.getLongEnergyStored() : 0);
         lazyEnergyHandler = LazyOptional.of(() -> energyHandler);
     }
 
@@ -125,8 +125,8 @@ public class SolarPanelBaseBE extends BlockEntity {
 
         // Get tier name from structure path (solar_rubetine -> rubetine)
         String tierName = name != null ? name : (structure != null ? structure.getPath().replace("solar_", "") : "unknown");
-        int currentEnergy = energyHandler != null ? energyHandler.getEnergyStored() : 0;
-        int maxEnergy = energyHandler != null ? energyHandler.getMaxEnergyStored() : 0;
+        long currentEnergy = energyHandler != null ? energyHandler.getLongEnergyStored() : 0;
+        long maxEnergy = energyHandler != null ? energyHandler.getLongMaxEnergyStored() : 0;
 
         if(working) {
             // Header with tier name and status
@@ -153,6 +153,22 @@ public class SolarPanelBaseBE extends BlockEntity {
             // Solar efficiency
             toRet.add(Component.literal("☀ EFFICIENCY: ").withStyle(net.minecraft.ChatFormatting.YELLOW)
                 .append(Component.literal(String.format("%.1f%%", getSolarEfficiency())).withStyle(net.minecraft.ChatFormatting.WHITE)));
+
+            // Show calculation mode
+            String calcMode = ConfigLoader.getInstance().USE_REAL_SOLAR_CALCULATIONS ? "Real Solar" : "Minecraft Time";
+            toRet.add(Component.literal("📊 MODE: ").withStyle(net.minecraft.ChatFormatting.AQUA)
+                .append(Component.literal(calcMode).withStyle(net.minecraft.ChatFormatting.WHITE)));
+
+            // Show additional info for real solar calculations
+            if (ConfigLoader.getInstance().USE_REAL_SOLAR_CALCULATIONS) {
+                double latitude = ConfigLoader.getInstance().SOLAR_PANEL_LATITUDE;
+                toRet.add(Component.literal("🌍 LATITUDE: ").withStyle(net.minecraft.ChatFormatting.BLUE)
+                    .append(Component.literal(String.format("%.1f°", latitude)).withStyle(net.minecraft.ChatFormatting.WHITE)));
+
+                float irradiance = calculateRealSolarIrradiance();
+                toRet.add(Component.literal("☀ IRRADIANCE: ").withStyle(net.minecraft.ChatFormatting.GOLD)
+                    .append(Component.literal(String.format("%.0f W/m²", irradiance)).withStyle(net.minecraft.ChatFormatting.WHITE)));
+            }
 
             return toRet;
         }
@@ -275,12 +291,12 @@ public class SolarPanelBaseBE extends BlockEntity {
         };
     }
     
-    private String getEnergyBar(int current, int max) {
+    private String getEnergyBar(long current, long max) {
         if (max == 0) return "│░░░░░░░░░░│ 0%";
-        
+
         double percentage = (double) current / max;
         int filledBars = (int) (percentage * 10);
-        
+
         StringBuilder bar = new StringBuilder("│");
         for (int i = 0; i < 10; i++) {
             if (i < filledBars) {
@@ -290,7 +306,7 @@ public class SolarPanelBaseBE extends BlockEntity {
             }
         }
         bar.append(String.format("│ %.1f%%", percentage * 100));
-        
+
         return bar.toString();
     }
 
@@ -358,7 +374,7 @@ public class SolarPanelBaseBE extends BlockEntity {
         
         // Ensure we have a valid energy handler even if setup wasn't called yet
         if (energyHandler == null) {
-            energyHandler = new ModEnergyStorage(ENERGY_CAPACITY, 0, ENERGY_CAPACITY, 0);
+            energyHandler = new ModEnergyStorage((long)ENERGY_CAPACITY, 0L, (long)ENERGY_CAPACITY, 0L);
         }
         
         setupEnergyStorage();
@@ -438,7 +454,7 @@ public class SolarPanelBaseBE extends BlockEntity {
         }
 
         progress++;
-        int energyGenerated = getRfTick();
+        long energyGenerated = getRfTick();
         if (energyGenerated > 0) {
             energyHandler.addEnergy(energyGenerated);
         }
@@ -468,7 +484,7 @@ public class SolarPanelBaseBE extends BlockEntity {
         }
     }
 
-    public int getRfTick() {
+    public long getRfTick() {
         if (name == null) {
             LOGGER.warn("Solar panel name is null, returning 0 RF/tick");
             return 0;
@@ -496,12 +512,12 @@ public class SolarPanelBaseBE extends BlockEntity {
             return 0;
         }
 
-        int baseGeneration = config.energyGeneration();
+        long baseGeneration = config.energyGeneration();
         float efficiency = getSolarEfficiency() / 100.0f; // Convert percentage to decimal
 
         // Final formula: BaseGeneration * AllModifiers * SolarEfficiency
         // Example Ultimate: 5120 * 2.25 (both modifiers) * 1.0 (100% day) = 11,520 RF/tick
-        return Math.max(0, (int) (baseGeneration * totalMod * efficiency));
+        return Math.max(0, (long) (baseGeneration * totalMod * efficiency));
     }
 
     public int getMaxProgress() {
@@ -520,22 +536,20 @@ public class SolarPanelBaseBE extends BlockEntity {
         String dimensionName = level.dimension().location().toString();
         boolean isVoidDimension = dimensionName.contains("void") || dimensionName.contains("voidminers");
 
-        // Base efficiency at 100%
-        float efficiency = 100.0f;
+        float efficiency;
 
-        // Day/Night cycle check first
-        long timeOfDay = level.getDayTime() % 24000;
-        boolean isDaytime = timeOfDay >= 0 && timeOfDay < 12000; // 0-12000 is day, 12000-24000 is night
+        // Use real solar calculations or fallback to Minecraft time
+        if (ConfigLoader.getInstance().USE_REAL_SOLAR_CALCULATIONS) {
+            // Calculate real solar irradiance based on sun position
+            float solarIrradiance = calculateRealSolarIrradiance();
 
-        if (!isDaytime) {
-            // No generation at night
-            return 0.0f;
+            // Convert irradiance to efficiency percentage (0-100%)
+            // Standard solar irradiance at Earth's surface is ~1000 W/m²
+            efficiency = (solarIrradiance / 1000.0f) * 100.0f;
+        } else {
+            // Fallback to Minecraft time-based calculation
+            efficiency = calculateMinecraftSolarEfficiency();
         }
-
-        // Calculate sun angle efficiency (highest at noon)
-        float dayProgress = timeOfDay / 12000.0f; // 0 to 1 during the day
-        float solarAngle = (float) Math.sin(dayProgress * Math.PI); // Peak at noon (0.5)
-        efficiency *= Math.max(0.3f, solarAngle); // Minimum 30% during dawn/dusk
 
         // Sky light level - skip this check in void dimension
         if (!isVoidDimension) {
@@ -566,6 +580,95 @@ public class SolarPanelBaseBE extends BlockEntity {
         efficiency *= weatherPenalty;
 
         return Math.max(0, Math.min(100, efficiency));
+    }
+
+    /**
+     * Calculates real solar irradiance based on actual sun position and atmospheric conditions
+     * @return Solar irradiance in W/m² (0-1200 W/m²)
+     */
+    private float calculateRealSolarIrradiance() {
+        // Get current real-world time
+        long currentTimeMillis = System.currentTimeMillis();
+
+        // Use configurable latitude from config file
+        double latitude = Math.toRadians(ConfigLoader.getInstance().SOLAR_PANEL_LATITUDE);
+
+        // Calculate day of year (1-365)
+        int dayOfYear = (int) ((currentTimeMillis / (1000 * 60 * 60 * 24)) % 365) + 1;
+
+        // Calculate solar declination angle (seasonal variation)
+        double declination = Math.toRadians(23.45) * Math.sin(Math.toRadians(360.0 * (284 + dayOfYear) / 365.0));
+
+        // Calculate hour of day (0-24)
+        double hourOfDay = ((currentTimeMillis / (1000 * 60 * 60)) % 24);
+
+        // Calculate hour angle (solar noon = 0°)
+        double hourAngle = Math.toRadians(15.0 * (hourOfDay - 12.0));
+
+        // Calculate solar elevation angle
+        double solarElevation = Math.asin(
+            Math.sin(latitude) * Math.sin(declination) +
+            Math.cos(latitude) * Math.cos(declination) * Math.cos(hourAngle)
+        );
+
+        // If sun is below horizon, no solar irradiance
+        if (solarElevation <= 0) {
+            return 0.0f;
+        }
+
+        // Calculate air mass (amount of atmosphere sunlight passes through)
+        double airMass = 1.0 / Math.sin(solarElevation);
+
+        // Limit air mass to reasonable values (at low sun angles)
+        airMass = Math.min(airMass, 10.0);
+
+        // Calculate direct normal irradiance (DNI) using simplified atmospheric model
+        // Standard extraterrestrial irradiance = 1367 W/m²
+        double extraterrestrialIrradiance = 1367.0;
+
+        // Atmospheric transmission factor (accounts for absorption and scattering)
+        // Uses Beer's law approximation: I = I₀ * e^(-τ * m)
+        // where τ (optical depth) ≈ 0.2 for clear sky conditions
+        double atmosphericTransmission = Math.exp(-0.2 * airMass);
+
+        // Calculate direct normal irradiance
+        double directNormalIrradiance = extraterrestrialIrradiance * atmosphericTransmission;
+
+        // Calculate irradiance on horizontal surface (what solar panel receives)
+        double horizontalIrradiance = directNormalIrradiance * Math.sin(solarElevation);
+
+        // Add diffuse radiation (scattered light from sky) - approximately 10-20% of direct
+        double diffuseIrradiance = horizontalIrradiance * 0.15;
+
+        // Total irradiance = direct + diffuse
+        double totalIrradiance = horizontalIrradiance + diffuseIrradiance;
+
+        return (float) Math.max(0, totalIrradiance);
+    }
+
+    /**
+     * Calculates solar efficiency based on Minecraft's day/night cycle
+     * @return Solar efficiency percentage (0-100%)
+     */
+    private float calculateMinecraftSolarEfficiency() {
+        // Base efficiency at 100%
+        float efficiency = 100.0f;
+
+        // Day/Night cycle check first
+        long timeOfDay = level.getDayTime() % 24000;
+        boolean isDaytime = timeOfDay >= 0 && timeOfDay < 12000; // 0-12000 is day, 12000-24000 is night
+
+        if (!isDaytime) {
+            // No generation at night
+            return 0.0f;
+        }
+
+        // Calculate sun angle efficiency (highest at noon)
+        float dayProgress = timeOfDay / 12000.0f; // 0 to 1 during the day
+        float solarAngle = (float) Math.sin(dayProgress * Math.PI); // Peak at noon (0.5)
+        efficiency *= Math.max(0.3f, solarAngle); // Minimum 30% during dawn/dusk
+
+        return efficiency;
     }
 
     private boolean hasViewOnSky(BlockPos pos) {
@@ -610,7 +713,7 @@ public class SolarPanelBaseBE extends BlockEntity {
     }
 
     private boolean isEnergyHandlerFull() {
-        return energyHandler.getEnergyStored() >= energyHandler.getMaxEnergyStored();
+        return energyHandler.getLongEnergyStored() >= energyHandler.getLongMaxEnergyStored();
     }
 
     public void drops() {

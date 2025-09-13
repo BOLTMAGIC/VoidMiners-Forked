@@ -49,7 +49,10 @@ public class ModLanguageProvider extends LanguageProvider {
         this.add(ModBlocks.NULL_MOD.get(), "Null Modifier");
 
         for (CrystalSet set : CrystalSet.sets()) {
-            this.add(set.CRYSTAL.get(), cFL(set.name));
+            // Skip crystal translation if it's null (like ultimate set)
+            if (set.CRYSTAL != null) {
+                this.add(set.CRYSTAL.get(), cFL(set.name));
+            }
 
             this.add(set.CRYSTAL_BLOCK.get(), cFL(set.name) + " Block");
 
@@ -78,7 +81,10 @@ public class ModLanguageProvider extends LanguageProvider {
         
         // Solar panels translations
         for (SolarSet set : SolarSet.sets()) {
-            this.add(set.SOLAR_CRYSTAL.get(), "Solar " + cFL(set.name));
+            // Skip solar crystal translation if it's null (like ultimate set)
+            if (set.SOLAR_CRYSTAL != null) {
+                this.add(set.SOLAR_CRYSTAL.get(), "Solar " + cFL(set.name));
+            }
             this.add(set.SOLAR_CRYSTAL_BLOCK.get(), "Solar " + cFL(set.name) + " Block");
             this.add(set.SOLAR_PANEL_CONTROLLER.get(), "Solar " + cFL(set.name) + " Panel");
             this.add(set.SOLAR_FRAME.get(), "Solar " + cFL(set.name) + " Frame");

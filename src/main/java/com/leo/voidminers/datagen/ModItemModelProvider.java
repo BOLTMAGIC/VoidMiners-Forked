@@ -21,14 +21,18 @@ public class ModItemModelProvider extends ItemModelProvider {
         simpleItem(ModItems.STRUCTURE_HELPER);
 
         for (CrystalSet set : CrystalSet.sets()) {
-            simpleItem(
-                set.CRYSTAL
-            );
+            if (set.CRYSTAL != null) {
+                simpleItem(
+                    set.CRYSTAL
+                );
+            }
         }
-        
+
         // Solar items - use existing tier textures
         for (SolarSet set : SolarSet.sets()) {
-            simpleItemWithTexture(set.SOLAR_CRYSTAL, set.name);
+            if (set.SOLAR_CRYSTAL != null) {
+                simpleItemWithTexture(set.SOLAR_CRYSTAL, set.name);
+            }
         }
     }
 
