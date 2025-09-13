@@ -231,13 +231,19 @@ public class ConfigLoader {
 
     public SolarModifierConfig getSolarModifierConfig(Block block, String solarTier) {
         String blockName = ForgeRegistries.BLOCKS.getKey(block).getPath();
-        String modifierType = blockName.split("_")[1]; // speed, energy, item
 
-        // Map old modifier types to new solar types
+        // For solar modifiers, the format is: solar_<tier>_<type>_modifier
+        // Example: solar_ultimate_efficiency_modifier
+        String[] parts = blockName.split("_");
+
+        // Get the modifier type (efficiency, weather, output)
+        String modifierType = parts.length >= 3 ? parts[2] : "unknown";
+
+        // Map modifier types to config keys
         String solarModifierType = switch (modifierType) {
-            case "energy" -> "generation";
-            case "speed" -> "efficiency";
-            case "item" -> "weather_resistance";
+            case "efficiency" -> "efficiency";
+            case "weather" -> "weather_resistance";
+            case "output" -> "generation";
             default -> modifierType;
         };
 
