@@ -28,6 +28,6 @@ public class ModEnergyStorage extends EnergyStorage {
     }
 
     public void addEnergy(int add) {
-        this.energy += add;
+        this.energy = Math.min(this.capacity, this.energy + add);
     }
 }
