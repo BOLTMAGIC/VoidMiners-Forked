@@ -19,6 +19,7 @@ public class ModLanguageProvider extends LanguageProvider {
         this.add(VoidMiners.MODID + ".itemGroup.items", "Items");
 
         this.add(ModItems.STRUCTURE_HELPER.get(), "Structure Helper");
+        this.add(ModItems.ULTIMATE_STELLAR_CORE.get(), "Ultimate Stellar Core");
 
         this.add("gui." + VoidMiners.MODID + ".miner", "Tier %d Miner");
         this.add("gui." + VoidMiners.MODID + ".miners", "Miners");

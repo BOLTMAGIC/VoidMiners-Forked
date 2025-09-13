@@ -61,10 +61,9 @@ public class ModBlockStateProvider extends BlockStateProvider {
 
             tripleLayerBlockWithItem(set.SOLAR_FRAME, "voidminers:block/" + set.name + "/frame", "voidminers:block/_core/frame", "voidminers:block/_core/cover");
 
-            // Create the miner block model for solar panels with correct path
-            BlockModelBuilder minerModel = models().cubeAll("block/" + set.name + "/miner", 
-                modLoc("block/" + set.name + "/miner"));
-            simpleBlockWithItem(set.SOLAR_PANEL_CONTROLLER.get(), minerModel);
+            // Use the existing solar_panel model for solar panels
+            simpleBlockWithItem(set.SOLAR_PANEL_CONTROLLER.get(),
+                new ModelFile.UncheckedModelFile(ResourceLocation.fromNamespaceAndPath(VoidMiners.MODID, "block/" + set.name + "/solar_panel")));
 
             quadLayerBlockWithItem(set.EFFICIENCY_MOD, "voidminers:block/_core/energy", "voidminers:block/_core/modifier", "voidminers:block/_core/cover", "voidminers:block/" + set.name + "/core");
 
