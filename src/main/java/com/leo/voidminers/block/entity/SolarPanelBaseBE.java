@@ -154,21 +154,6 @@ public class SolarPanelBaseBE extends BlockEntity {
             toRet.add(Component.literal("☀ EFFICIENCY: ").withStyle(net.minecraft.ChatFormatting.YELLOW)
                 .append(Component.literal(String.format("%.1f%%", getSolarEfficiency())).withStyle(net.minecraft.ChatFormatting.WHITE)));
 
-            // Show calculation mode
-            String calcMode = ConfigLoader.getInstance().USE_REAL_SOLAR_CALCULATIONS ? "Real Solar" : "Minecraft Time";
-            toRet.add(Component.literal("📊 MODE: ").withStyle(net.minecraft.ChatFormatting.AQUA)
-                .append(Component.literal(calcMode).withStyle(net.minecraft.ChatFormatting.WHITE)));
-
-            // Show additional info for real solar calculations
-            if (ConfigLoader.getInstance().USE_REAL_SOLAR_CALCULATIONS) {
-                double latitude = ConfigLoader.getInstance().SOLAR_PANEL_LATITUDE;
-                toRet.add(Component.literal("🌍 LATITUDE: ").withStyle(net.minecraft.ChatFormatting.BLUE)
-                    .append(Component.literal(String.format("%.1f°", latitude)).withStyle(net.minecraft.ChatFormatting.WHITE)));
-
-                float irradiance = calculateRealSolarIrradiance();
-                toRet.add(Component.literal("☀ IRRADIANCE: ").withStyle(net.minecraft.ChatFormatting.GOLD)
-                    .append(Component.literal(String.format("%.0f W/m²", irradiance)).withStyle(net.minecraft.ChatFormatting.WHITE)));
-            }
 
             return toRet;
         }
@@ -536,20 +521,22 @@ public class SolarPanelBaseBE extends BlockEntity {
         String dimensionName = level.dimension().location().toString();
         boolean isVoidDimension = dimensionName.contains("void") || dimensionName.contains("voidminers");
 
-        float efficiency;
+        // Simple Minecraft time-based calculation
+        float efficiency = 100.0f;
 
-        // Use real solar calculations or fallback to Minecraft time
-        if (ConfigLoader.getInstance().USE_REAL_SOLAR_CALCULATIONS) {
-            // Calculate real solar irradiance based on sun position
-            float solarIrradiance = calculateRealSolarIrradiance();
+        // Day/Night cycle check
+        long timeOfDay = level.getDayTime() % 24000;
+        boolean isDaytime = timeOfDay >= 0 && timeOfDay < 12000; // 0-12000 is day, 12000-24000 is night
 
-            // Convert irradiance to efficiency percentage (0-100%)
-            // Standard solar irradiance at Earth's surface is ~1000 W/m²
-            efficiency = (solarIrradiance / 1000.0f) * 100.0f;
-        } else {
-            // Fallback to Minecraft time-based calculation
-            efficiency = calculateMinecraftSolarEfficiency();
+        if (!isDaytime) {
+            // No generation at night
+            return 0.0f;
         }
+
+        // Calculate sun angle efficiency (highest at noon)
+        float dayProgress = timeOfDay / 12000.0f; // 0 to 1 during the day
+        float solarAngle = (float) Math.sin(dayProgress * Math.PI); // Peak at noon (0.5)
+        efficiency *= Math.max(0.3f, solarAngle); // Minimum 30% during dawn/dusk
 
         // Sky light level - skip this check in void dimension
         if (!isVoidDimension) {
@@ -582,94 +569,6 @@ public class SolarPanelBaseBE extends BlockEntity {
         return Math.max(0, Math.min(100, efficiency));
     }
 
-    /**
-     * Calculates real solar irradiance based on actual sun position and atmospheric conditions
-     * @return Solar irradiance in W/m² (0-1200 W/m²)
-     */
-    private float calculateRealSolarIrradiance() {
-        // Get current real-world time
-        long currentTimeMillis = System.currentTimeMillis();
-
-        // Use configurable latitude from config file
-        double latitude = Math.toRadians(ConfigLoader.getInstance().SOLAR_PANEL_LATITUDE);
-
-        // Calculate day of year (1-365)
-        int dayOfYear = (int) ((currentTimeMillis / (1000 * 60 * 60 * 24)) % 365) + 1;
-
-        // Calculate solar declination angle (seasonal variation)
-        double declination = Math.toRadians(23.45) * Math.sin(Math.toRadians(360.0 * (284 + dayOfYear) / 365.0));
-
-        // Calculate hour of day (0-24)
-        double hourOfDay = ((currentTimeMillis / (1000 * 60 * 60)) % 24);
-
-        // Calculate hour angle (solar noon = 0°)
-        double hourAngle = Math.toRadians(15.0 * (hourOfDay - 12.0));
-
-        // Calculate solar elevation angle
-        double solarElevation = Math.asin(
-            Math.sin(latitude) * Math.sin(declination) +
-            Math.cos(latitude) * Math.cos(declination) * Math.cos(hourAngle)
-        );
-
-        // If sun is below horizon, no solar irradiance
-        if (solarElevation <= 0) {
-            return 0.0f;
-        }
-
-        // Calculate air mass (amount of atmosphere sunlight passes through)
-        double airMass = 1.0 / Math.sin(solarElevation);
-
-        // Limit air mass to reasonable values (at low sun angles)
-        airMass = Math.min(airMass, 10.0);
-
-        // Calculate direct normal irradiance (DNI) using simplified atmospheric model
-        // Standard extraterrestrial irradiance = 1367 W/m²
-        double extraterrestrialIrradiance = 1367.0;
-
-        // Atmospheric transmission factor (accounts for absorption and scattering)
-        // Uses Beer's law approximation: I = I₀ * e^(-τ * m)
-        // where τ (optical depth) ≈ 0.2 for clear sky conditions
-        double atmosphericTransmission = Math.exp(-0.2 * airMass);
-
-        // Calculate direct normal irradiance
-        double directNormalIrradiance = extraterrestrialIrradiance * atmosphericTransmission;
-
-        // Calculate irradiance on horizontal surface (what solar panel receives)
-        double horizontalIrradiance = directNormalIrradiance * Math.sin(solarElevation);
-
-        // Add diffuse radiation (scattered light from sky) - approximately 10-20% of direct
-        double diffuseIrradiance = horizontalIrradiance * 0.15;
-
-        // Total irradiance = direct + diffuse
-        double totalIrradiance = horizontalIrradiance + diffuseIrradiance;
-
-        return (float) Math.max(0, totalIrradiance);
-    }
-
-    /**
-     * Calculates solar efficiency based on Minecraft's day/night cycle
-     * @return Solar efficiency percentage (0-100%)
-     */
-    private float calculateMinecraftSolarEfficiency() {
-        // Base efficiency at 100%
-        float efficiency = 100.0f;
-
-        // Day/Night cycle check first
-        long timeOfDay = level.getDayTime() % 24000;
-        boolean isDaytime = timeOfDay >= 0 && timeOfDay < 12000; // 0-12000 is day, 12000-24000 is night
-
-        if (!isDaytime) {
-            // No generation at night
-            return 0.0f;
-        }
-
-        // Calculate sun angle efficiency (highest at noon)
-        float dayProgress = timeOfDay / 12000.0f; // 0 to 1 during the day
-        float solarAngle = (float) Math.sin(dayProgress * Math.PI); // Peak at noon (0.5)
-        efficiency *= Math.max(0.3f, solarAngle); // Minimum 30% during dawn/dusk
-
-        return efficiency;
-    }
 
     private boolean hasViewOnSky(BlockPos pos) {
         // Special handling for void dimension

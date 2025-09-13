@@ -40,12 +40,6 @@ public class ConfigLoader {
     public float ULTIMATE_STELLAR_CORE_DROP_CHANCE = 0.1f;
 
     @Expose
-    public boolean USE_REAL_SOLAR_CALCULATIONS = true;
-
-    @Expose
-    public double SOLAR_PANEL_LATITUDE = 45.0;
-
-    @Expose
     public Map<String, MinerConfig> MINER_CONFIGS = MapUtil.of(
         MapUtil.createEntry("rubetine", new MinerConfig(10000000, 1000, 300,
             MapUtil.of(
