@@ -161,21 +161,38 @@ public class SolarPanelBaseBE extends BlockEntity {
             toRet.add(Component.literal("═══ ").withStyle(net.minecraft.ChatFormatting.GRAY)
                 .append(Component.literal(tierName.toUpperCase() + " SOLAR PANEL").withStyle(getTierColor(tierName)))
                 .append(Component.literal(" ═══").withStyle(net.minecraft.ChatFormatting.GRAY)));
-            
+
             toRet.add(Component.literal("⚠ STATUS: ").withStyle(net.minecraft.ChatFormatting.GOLD)
                 .append(Component.literal("NOT GENERATING").withStyle(net.minecraft.ChatFormatting.RED)));
-            
-            String reason = isEnergyHandlerFull() ? "Energy storage full" : 
-                           getSolarEfficiency() <= 0 ? "No sunlight (night/weather)" : "Unknown issue";
-            
+
+            // More detailed reason detection
+            String reason;
+            if (isEnergyHandlerFull()) {
+                reason = "Energy storage full";
+            } else {
+                float efficiency = getSolarEfficiency();
+                if (efficiency <= 0) {
+                    long timeOfDay = level.getDayTime() % 24000;
+                    if (timeOfDay >= 12000) {
+                        reason = "Night time (wait for day)";
+                    } else if (level.isRaining()) {
+                        reason = level.isThundering() ? "Thunderstorm (15% efficiency)" : "Raining (30% efficiency)";
+                    } else {
+                        reason = "No sunlight available";
+                    }
+                } else {
+                    reason = "Unknown issue";
+                }
+            }
+
             toRet.add(Component.literal("❌ REASON: ").withStyle(net.minecraft.ChatFormatting.RED)
                 .append(Component.literal(reason).withStyle(net.minecraft.ChatFormatting.GRAY)));
-            
+
             toRet.add(Component.literal("⚡ ENERGY: ").withStyle(net.minecraft.ChatFormatting.YELLOW)
                 .append(Component.literal(String.format("%,d", currentEnergy)).withStyle(net.minecraft.ChatFormatting.WHITE))
                 .append(Component.literal(" / ").withStyle(net.minecraft.ChatFormatting.GRAY))
                 .append(Component.literal(String.format("%,d RF", maxEnergy)).withStyle(net.minecraft.ChatFormatting.WHITE)));
-            
+
             toRet.add(Component.literal("⚡ POTENTIAL: ").withStyle(net.minecraft.ChatFormatting.BLUE)
                 .append(Component.literal(String.format("%,d RF/tick", getRfTick())).withStyle(net.minecraft.ChatFormatting.WHITE)));
 
@@ -186,15 +203,32 @@ public class SolarPanelBaseBE extends BlockEntity {
             toRet.add(Component.literal("═══ ").withStyle(net.minecraft.ChatFormatting.GRAY)
                 .append(Component.literal(tierName.toUpperCase() + " SOLAR PANEL").withStyle(getTierColor(tierName)))
                 .append(Component.literal(" ═══").withStyle(net.minecraft.ChatFormatting.GRAY)));
-            
+
             toRet.add(Component.literal("⚠ STATUS: ").withStyle(net.minecraft.ChatFormatting.GOLD)
                 .append(Component.literal("INACTIVE").withStyle(net.minecraft.ChatFormatting.YELLOW)));
-            
+
+            // Check what's blocking the sky access
+            String blockingIssue = "No clear view to sky";
+            String tip = "Remove blocks above the panel";
+
+            // Check for specific obstructions
+            for (int i = 1; i <= 10; i++) {
+                BlockPos checkPos = worldPosition.above(i);
+                BlockState state = level.getBlockState(checkPos);
+                if (!state.isAir()) {
+                    blockingIssue = String.format("Blocked by %s at %d blocks above",
+                        state.getBlock().getName().getString(), i);
+                    tip = String.format("Remove the %s above the panel",
+                        state.getBlock().getName().getString());
+                    break;
+                }
+            }
+
             toRet.add(Component.literal("❌ ISSUE: ").withStyle(net.minecraft.ChatFormatting.RED)
-                .append(Component.literal("No clear view to sky").withStyle(net.minecraft.ChatFormatting.GRAY)));
-            
+                .append(Component.literal(blockingIssue).withStyle(net.minecraft.ChatFormatting.GRAY)));
+
             toRet.add(Component.literal("💡 TIP: ").withStyle(net.minecraft.ChatFormatting.AQUA)
-                .append(Component.literal("Remove blocks above the panel").withStyle(net.minecraft.ChatFormatting.WHITE)));
+                .append(Component.literal(tip).withStyle(net.minecraft.ChatFormatting.WHITE)));
 
             return toRet;
         }
@@ -378,7 +412,13 @@ public class SolarPanelBaseBE extends BlockEntity {
 
         checkStructure(pLevel, pPos);
 
-        active = foundStructure && hasViewOnSky(pPos);
+        boolean skyView = hasViewOnSky(pPos);
+        active = foundStructure && skyView;
+
+        if (!pLevel.isClientSide) {
+            LOGGER.info("[SOLAR DEBUG] Structure found: {}, Sky view: {}, Active: {}", foundStructure, skyView, active);
+        }
+
         if (level != null) {
             level.sendBlockUpdated(pPos, getBlockState(), getBlockState(), 3);
         }
@@ -388,7 +428,13 @@ public class SolarPanelBaseBE extends BlockEntity {
             return;
         }
 
-        working = !isEnergyHandlerFull() && getSolarEfficiency() > 0;
+        float solarEff = getSolarEfficiency();
+        boolean energyFull = isEnergyHandlerFull();
+        working = !energyFull && solarEff > 0;
+
+        if (!pLevel.isClientSide) {
+            LOGGER.info("[SOLAR DEBUG] Energy full: {}, Solar efficiency: {}%, Working: {}", energyFull, solarEff, working);
+        }
         if (level != null) {
             level.sendBlockUpdated(getBlockPos(), getBlockState(), getBlockState(), 3);
         }
@@ -449,6 +495,12 @@ public class SolarPanelBaseBE extends BlockEntity {
         int baseGeneration = config.energyGeneration();
         float efficiency = getSolarEfficiency() / 100.0f; // Convert percentage to decimal
 
+        // Debug logging
+        if (level != null && !level.isClientSide) {
+            LOGGER.info("[SOLAR DEBUG] Panel: {}, Base Gen: {}, Modifier: {}, Efficiency: {}%, Final: {} RF/tick",
+                name, baseGeneration, mod, getSolarEfficiency(), (int)(baseGeneration * mod * efficiency));
+        }
+
         return Math.max(0, (int) (baseGeneration * mod * efficiency));
     }
 
@@ -469,12 +521,20 @@ public class SolarPanelBaseBE extends BlockEntity {
     public float getSolarEfficiency() {
         if (level == null) return 0;
 
+        // Check if we're in void dimension
+        String dimensionName = level.dimension().location().toString();
+        boolean isVoidDimension = dimensionName.contains("void") || dimensionName.contains("voidminers");
+
         // Base efficiency at 100%
         float efficiency = 100.0f;
 
         // Day/Night cycle check first
         long timeOfDay = level.getDayTime() % 24000;
         boolean isDaytime = timeOfDay >= 0 && timeOfDay < 12000; // 0-12000 is day, 12000-24000 is night
+
+        if (!level.isClientSide) {
+            LOGGER.info("[SOLAR DEBUG] Time of day: {}, Is daytime: {}, Dimension: {}", timeOfDay, isDaytime, dimensionName);
+        }
 
         if (!isDaytime) {
             // No generation at night
@@ -486,11 +546,14 @@ public class SolarPanelBaseBE extends BlockEntity {
         float solarAngle = (float) Math.sin(dayProgress * Math.PI); // Peak at noon (0.5)
         efficiency *= Math.max(0.3f, solarAngle); // Minimum 30% during dawn/dusk
 
-        // Sky light level (0-15) - this should be checked above the panel
-        int skyLight = level.getBrightness(LightLayer.SKY, getBlockPos().above());
-        if (skyLight < 15) {
-            efficiency *= (skyLight / 15.0f);
+        // Sky light level - skip this check in void dimension
+        if (!isVoidDimension) {
+            int skyLight = level.getBrightness(LightLayer.SKY, getBlockPos().above());
+            if (skyLight < 15) {
+                efficiency *= (skyLight / 15.0f);
+            }
         }
+        // In void dimension, assume full sky light access if no blocks above
 
         // Weather conditions
         float weatherPenalty = 1.0f;
@@ -515,7 +578,32 @@ public class SolarPanelBaseBE extends BlockEntity {
     }
 
     private boolean hasViewOnSky(BlockPos pos) {
-        // Check if there's a clear view to the sky above the solar panel
+        // Special handling for void dimension
+        String dimensionName = level.dimension().location().toString();
+        boolean isVoidDimension = dimensionName.contains("void") || dimensionName.contains("voidminers");
+
+        if (!level.isClientSide) {
+            LOGGER.info("[SOLAR DEBUG] Dimension: {}, Is void dimension: {}", dimensionName, isVoidDimension);
+        }
+
+        // In void dimension, just check for blocks above
+        if (isVoidDimension) {
+            // Check for any obstructions above the panel
+            for (int i = 1; i <= 10; i++) {  // Check 10 blocks up
+                BlockPos checkPos = pos.above(i);
+                BlockState state = level.getBlockState(checkPos);
+
+                if (!state.isAir()) {
+                    if (!level.isClientSide) {
+                        LOGGER.info("[SOLAR DEBUG] Found obstruction at {} blocks above: {}", i, state.getBlock());
+                    }
+                    return false;
+                }
+            }
+            return true;  // No obstructions in void dimension
+        }
+
+        // Normal dimension logic
         BlockPos checkPos = pos.above();
 
         // Check the position directly above first
