@@ -34,6 +34,12 @@ public class ConfigLoader {
     public boolean ALLOW_NO_ENERGY_SOLAR_PANELS = false;
 
     @Expose
+    public float ROSARIUM_STELLAR_CORE_DROP_CHANCE = 0.05f;
+
+    @Expose
+    public float ULTIMATE_STELLAR_CORE_DROP_CHANCE = 0.1f;
+
+    @Expose
     public Map<String, MinerConfig> MINER_CONFIGS = MapUtil.of(
         MapUtil.createEntry("rubetine", new MinerConfig(10000000, 1000, 300,
             MapUtil.of(

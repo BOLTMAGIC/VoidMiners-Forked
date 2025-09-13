@@ -419,6 +419,17 @@ public class ControllerBaseBE extends BlockEntity {
         }
 
         ItemStack output = getBoostedStack(getWeightedItem(allOutputs, level.random));
+
+        // Check for Ultimate Stellar Core drop
+        if (name != null && level.random.nextFloat() < getDropChance()) {
+            ItemStack stellarCore = new ItemStack(com.leo.voidminers.init.ModItems.ULTIMATE_STELLAR_CORE.get());
+            for (int i = 0; i < itemHandler.getSlots(); i++) {
+                if (!isItemValid(stellarCore, itemHandler.getStackInSlot(i))) continue;
+                ItemStack coreRemaining = itemHandler.insertItem(i, stellarCore.copy(), false);
+                if (coreRemaining.isEmpty()) break;
+            }
+        }
+
         ItemStack remaining;
 
         for (int i = 0; i < itemHandler.getSlots(); i++) {
@@ -436,6 +447,17 @@ public class ControllerBaseBE extends BlockEntity {
     public void handleUpdateTag(CompoundTag tag) {
         super.handleUpdateTag(tag);
         this.load(tag);
+    }
+
+    private float getDropChance() {
+        if (name == null) return 0f;
+        ConfigLoader config = ConfigLoader.getInstance();
+        if (name.equals("rosarium")) {
+            return config.ROSARIUM_STELLAR_CORE_DROP_CHANCE;
+        } else if (name.equals("ultimate")) {
+            return config.ULTIMATE_STELLAR_CORE_DROP_CHANCE;
+        }
+        return 0f;
     }
 
     private void sync() {
