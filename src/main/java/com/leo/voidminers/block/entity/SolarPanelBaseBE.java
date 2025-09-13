@@ -474,11 +474,21 @@ public class SolarPanelBaseBE extends BlockEntity {
             return 0;
         }
 
+        // Calculate modifier bonuses
+        // Output Modifier: Boosts generation via generation value
+        // Efficiency Modifier: Also boosts generation via efficiency value
+        // Weather Modifier: Reduces weather penalties (applied in getSolarEfficiency)
         float mod = 1.0f;
+        float efficiencyMod = 1.0f;
 
         for (Map.Entry<BlockInWorld, ConfigLoader.SolarModifierConfig> entry : modifierMap.entrySet()) {
-            mod *= entry.getValue().generation(); // Solar generation multiplier
+            mod *= entry.getValue().generation(); // From Output modifier (1.5x for Ultimate)
+            efficiencyMod *= entry.getValue().efficiency(); // From Efficiency modifier (1.5x for Ultimate)
         }
+
+        // Both modifiers multiply together for total generation boost
+        // Example: Output (1.5x) * Efficiency (1.5x) = 2.25x total
+        float totalMod = mod * efficiencyMod;
 
         ConfigLoader.SolarPanelConfig config = ConfigLoader.getInstance().getSolarPanelConfig(name);
         if (config == null) {
@@ -489,21 +499,18 @@ public class SolarPanelBaseBE extends BlockEntity {
         int baseGeneration = config.energyGeneration();
         float efficiency = getSolarEfficiency() / 100.0f; // Convert percentage to decimal
 
-        return Math.max(0, (int) (baseGeneration * mod * efficiency));
+        // Final formula: BaseGeneration * AllModifiers * SolarEfficiency
+        // Example Ultimate: 5120 * 2.25 (both modifiers) * 1.0 (100% day) = 11,520 RF/tick
+        return Math.max(0, (int) (baseGeneration * totalMod * efficiency));
     }
 
     public int getMaxProgress() {
         if (name == null) {
             return 100; // Default duration if name is null
         }
-        
-        float mod = 1;
 
-        for (Map.Entry<BlockInWorld, ConfigLoader.SolarModifierConfig> entry : modifierMap.entrySet()) {
-            mod *= entry.getValue().efficiency(); // Solar panel cycle efficiency
-        }
-
-        return (int) (ConfigLoader.getInstance().getSolarPanelConfig(name).duration() * mod);
+        // No modifier effect on cycle time - keep it constant
+        return ConfigLoader.getInstance().getSolarPanelConfig(name).duration();
     }
 
     public float getSolarEfficiency() {
