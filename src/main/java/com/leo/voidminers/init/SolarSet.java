@@ -66,7 +66,7 @@ public class SolarSet {
                 BlockBehaviour.Properties.of()
                     .strength(hardness, resistance)
                     .requiresCorrectToolForDrops(),
-                "solar_" + name
+                name  // Use just the name without "solar_" prefix for config lookup
             ),
             rarity
         );
@@ -79,7 +79,7 @@ public class SolarSet {
                     .strength(hardness, resistance)
                     .requiresCorrectToolForDrops(),
                 structure,
-                "solar_" + name
+                name  // Use just the name without "solar_" prefix for config lookup
             ),
             rarity
         );

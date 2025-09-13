@@ -415,9 +415,6 @@ public class SolarPanelBaseBE extends BlockEntity {
         boolean skyView = hasViewOnSky(pPos);
         active = foundStructure && skyView;
 
-        if (!pLevel.isClientSide) {
-            LOGGER.info("[SOLAR DEBUG] Structure found: {}, Sky view: {}, Active: {}", foundStructure, skyView, active);
-        }
 
         if (level != null) {
             level.sendBlockUpdated(pPos, getBlockState(), getBlockState(), 3);
@@ -432,9 +429,6 @@ public class SolarPanelBaseBE extends BlockEntity {
         boolean energyFull = isEnergyHandlerFull();
         working = !energyFull && solarEff > 0;
 
-        if (!pLevel.isClientSide) {
-            LOGGER.info("[SOLAR DEBUG] Energy full: {}, Solar efficiency: {}%, Working: {}", energyFull, solarEff, working);
-        }
         if (level != null) {
             level.sendBlockUpdated(getBlockPos(), getBlockState(), getBlockState(), 3);
         }
@@ -495,12 +489,6 @@ public class SolarPanelBaseBE extends BlockEntity {
         int baseGeneration = config.energyGeneration();
         float efficiency = getSolarEfficiency() / 100.0f; // Convert percentage to decimal
 
-        // Debug logging
-        if (level != null && !level.isClientSide) {
-            LOGGER.info("[SOLAR DEBUG] Panel: {}, Base Gen: {}, Modifier: {}, Efficiency: {}%, Final: {} RF/tick",
-                name, baseGeneration, mod, getSolarEfficiency(), (int)(baseGeneration * mod * efficiency));
-        }
-
         return Math.max(0, (int) (baseGeneration * mod * efficiency));
     }
 
@@ -531,10 +519,6 @@ public class SolarPanelBaseBE extends BlockEntity {
         // Day/Night cycle check first
         long timeOfDay = level.getDayTime() % 24000;
         boolean isDaytime = timeOfDay >= 0 && timeOfDay < 12000; // 0-12000 is day, 12000-24000 is night
-
-        if (!level.isClientSide) {
-            LOGGER.info("[SOLAR DEBUG] Time of day: {}, Is daytime: {}, Dimension: {}", timeOfDay, isDaytime, dimensionName);
-        }
 
         if (!isDaytime) {
             // No generation at night
@@ -582,9 +566,6 @@ public class SolarPanelBaseBE extends BlockEntity {
         String dimensionName = level.dimension().location().toString();
         boolean isVoidDimension = dimensionName.contains("void") || dimensionName.contains("voidminers");
 
-        if (!level.isClientSide) {
-            LOGGER.info("[SOLAR DEBUG] Dimension: {}, Is void dimension: {}", dimensionName, isVoidDimension);
-        }
 
         // In void dimension, just check for blocks above
         if (isVoidDimension) {
@@ -594,9 +575,6 @@ public class SolarPanelBaseBE extends BlockEntity {
                 BlockState state = level.getBlockState(checkPos);
 
                 if (!state.isAir()) {
-                    if (!level.isClientSide) {
-                        LOGGER.info("[SOLAR DEBUG] Found obstruction at {} blocks above: {}", i, state.getBlock());
-                    }
                     return false;
                 }
             }
@@ -659,11 +637,8 @@ public class SolarPanelBaseBE extends BlockEntity {
         // Check if the found pattern matches the expected structure
         String expectedStructurePath = (structure != null ? structure.getPath() : null);
         String foundPatternPath = pattern.ID().getPath();
-        LOGGER.info("[SOLAR DEBUG] Found pattern ID: {} (path: {}) at pos {}", pattern.ID(), foundPatternPath, pPos);
-        LOGGER.info("[SOLAR DEBUG] Expected structure path: {}", expectedStructurePath);
 
         if (expectedStructurePath == null || !foundPatternPath.equals(expectedStructurePath)) {
-            LOGGER.info("[SOLAR DEBUG] Structure mismatch! Found: {}, Expected: {}", foundPatternPath, expectedStructurePath);
             foundStructure = false;
             return;
         }
@@ -675,7 +650,6 @@ public class SolarPanelBaseBE extends BlockEntity {
             if (result != null) break;
         }
 
-        LOGGER.info("[SOLAR DEBUG] Match result: {} for pattern {}", (result != null ? "SUCCESS" : "FAILED"), pattern.ID());
         if (result == null) {
             foundStructure = false;
             return;
