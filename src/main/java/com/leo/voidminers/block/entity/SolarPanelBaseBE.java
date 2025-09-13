@@ -91,18 +91,27 @@ public class SolarPanelBaseBE extends BlockEntity {
         if (lazyEnergyHandler != null) {
             lazyEnergyHandler.invalidate();
         }
-        
+
         if (name == null) {
             LOGGER.warn("Solar panel name is null, using default energy storage");
-            energyHandler = new ModEnergyStorage(ENERGY_CAPACITY, 0, ENERGY_CAPACITY, energyHandler != null ? energyHandler.getEnergyStored() : 0);
+            energyHandler = new ModEnergyStorage(ENERGY_CAPACITY, ENERGY_CAPACITY, ENERGY_CAPACITY, energyHandler != null ? energyHandler.getEnergyStored() : 0);
             lazyEnergyHandler = LazyOptional.of(() -> energyHandler);
             return;
         }
-        
-        int storage = ConfigLoader.getInstance().getSolarPanelConfig(name).energyStorage();
 
+        ConfigLoader.SolarPanelConfig config = ConfigLoader.getInstance().getSolarPanelConfig(name);
+        if (config == null) {
+            LOGGER.warn("Solar panel config is null for {}, using default", name);
+            energyHandler = new ModEnergyStorage(ENERGY_CAPACITY, ENERGY_CAPACITY, ENERGY_CAPACITY, energyHandler != null ? energyHandler.getEnergyStored() : 0);
+            lazyEnergyHandler = LazyOptional.of(() -> energyHandler);
+            return;
+        }
+
+        int storage = config.energyStorage();
         if (!ConfigLoader.getInstance().ALLOW_NO_ENERGY_SOLAR_PANELS && storage <= 0) storage = ENERGY_CAPACITY;
-        energyHandler = new ModEnergyStorage(storage, 0, storage, energyHandler != null ? energyHandler.getEnergyStored() : 0);
+
+        // Allow both input and output for energy transfer
+        energyHandler = new ModEnergyStorage(storage, storage, storage, energyHandler != null ? energyHandler.getEnergyStored() : 0);
         lazyEnergyHandler = LazyOptional.of(() -> energyHandler);
     }
 
@@ -113,9 +122,9 @@ public class SolarPanelBaseBE extends BlockEntity {
 
     public List<Component> getInteractionTooltip() {
         List<Component> toRet = new ArrayList<>();
-        
+
         // Get tier name from structure path (solar_rubetine -> rubetine)
-        String tierName = structure != null ? structure.getPath().replace("solar_", "") : "unknown";
+        String tierName = name != null ? name : (structure != null ? structure.getPath().replace("solar_", "") : "unknown");
         int currentEnergy = energyHandler != null ? energyHandler.getEnergyStored() : 0;
         int maxEnergy = energyHandler != null ? energyHandler.getMaxEnergyStored() : 0;
 
@@ -363,7 +372,7 @@ public class SolarPanelBaseBE extends BlockEntity {
     }
 
     public void tick(Level pLevel, BlockPos pPos, BlockState pState, ResourceLocation structure, String name) {
-        if(getStructure() == null) {
+        if(getStructure() == null || this.name == null) {
             setup(structure, name);
         }
 
@@ -374,7 +383,10 @@ public class SolarPanelBaseBE extends BlockEntity {
             level.sendBlockUpdated(pPos, getBlockState(), getBlockState(), 3);
         }
 
-        if(!active) return;
+        if(!active) {
+            working = false;
+            return;
+        }
 
         working = !isEnergyHandlerFull() && getSolarEfficiency() > 0;
         if (level != null) {
@@ -387,7 +399,9 @@ public class SolarPanelBaseBE extends BlockEntity {
 
         progress++;
         int energyGenerated = getRfTick();
-        energyHandler.addEnergy(energyGenerated);
+        if (energyGenerated > 0) {
+            energyHandler.addEnergy(energyGenerated);
+        }
 
         pLevel.sendBlockUpdated(pPos, pState, pState, 3);
         sync();
@@ -419,17 +433,23 @@ public class SolarPanelBaseBE extends BlockEntity {
             LOGGER.warn("Solar panel name is null, returning 0 RF/tick");
             return 0;
         }
-        
-        float mod = 1;
+
+        float mod = 1.0f;
 
         for (Map.Entry<BlockInWorld, ConfigLoader.SolarModifierConfig> entry : modifierMap.entrySet()) {
             mod *= entry.getValue().generation(); // Solar generation multiplier
         }
 
-        int baseGeneration = ConfigLoader.getInstance().getSolarPanelConfig(name).energyGeneration();
+        ConfigLoader.SolarPanelConfig config = ConfigLoader.getInstance().getSolarPanelConfig(name);
+        if (config == null) {
+            LOGGER.warn("Solar panel config is null for {}, returning 0 RF/tick", name);
+            return 0;
+        }
+
+        int baseGeneration = config.energyGeneration();
         float efficiency = getSolarEfficiency() / 100.0f; // Convert percentage to decimal
 
-        return (int) (baseGeneration * mod * efficiency);
+        return Math.max(0, (int) (baseGeneration * mod * efficiency));
     }
 
     public int getMaxProgress() {
@@ -449,53 +469,67 @@ public class SolarPanelBaseBE extends BlockEntity {
     public float getSolarEfficiency() {
         if (level == null) return 0;
 
-        // Base efficiency factors
+        // Base efficiency at 100%
         float efficiency = 100.0f;
 
-        // Sky light level (0-15)
+        // Day/Night cycle check first
+        long timeOfDay = level.getDayTime() % 24000;
+        boolean isDaytime = timeOfDay >= 0 && timeOfDay < 12000; // 0-12000 is day, 12000-24000 is night
+
+        if (!isDaytime) {
+            // No generation at night
+            return 0.0f;
+        }
+
+        // Calculate sun angle efficiency (highest at noon)
+        float dayProgress = timeOfDay / 12000.0f; // 0 to 1 during the day
+        float solarAngle = (float) Math.sin(dayProgress * Math.PI); // Peak at noon (0.5)
+        efficiency *= Math.max(0.3f, solarAngle); // Minimum 30% during dawn/dusk
+
+        // Sky light level (0-15) - this should be checked above the panel
         int skyLight = level.getBrightness(LightLayer.SKY, getBlockPos().above());
-        efficiency *= (skyLight / 15.0f);
+        if (skyLight < 15) {
+            efficiency *= (skyLight / 15.0f);
+        }
 
         // Weather conditions
+        float weatherPenalty = 1.0f;
         if (level.isRaining()) {
-            efficiency *= 0.2f; // 20% efficiency in rain
+            weatherPenalty = 0.3f; // 30% efficiency in rain
             if (level.isThundering()) {
-                efficiency *= 0.5f; // 10% efficiency in thunderstorm
+                weatherPenalty = 0.15f; // 15% efficiency in thunderstorm
+            }
+
+            // Apply weather resistance modifiers
+            for (Map.Entry<BlockInWorld, ConfigLoader.SolarModifierConfig> entry : modifierMap.entrySet()) {
+                float resistance = entry.getValue().weatherResistance();
+                if (resistance > 1.0f) {
+                    // Weather resistance reduces the penalty
+                    weatherPenalty = Math.min(1.0f, weatherPenalty * resistance);
+                }
             }
         }
+        efficiency *= weatherPenalty;
 
-        // Day/Night cycle
-        if (level.isDay()) {
-            long timeOfDay = level.getDayTime() % 24000;
-            if (timeOfDay >= 6000 && timeOfDay <= 18000) { // Daytime (6AM to 6PM)
-                float dayProgress = (timeOfDay - 6000) / 12000.0f; // 0 to 1
-                float solarAngle = (float) Math.sin(dayProgress * Math.PI); // Peak at noon
-                efficiency *= solarAngle;
-            } else {
-                efficiency *= 0.05f; // 5% efficiency during sunrise/sunset
-            }
-        } else {
-            efficiency *= 0.0f; // No generation at night
-        }
-
-        // Weather resistance modifier
-        for (Map.Entry<BlockInWorld, ConfigLoader.SolarModifierConfig> entry : modifierMap.entrySet()) {
-            if (level.isRaining()) {
-                efficiency /= entry.getValue().weatherResistance(); // Weather resistance reduces rain penalty
-            }
-        }
-
-        return Math.max(0, efficiency);
+        return Math.max(0, Math.min(100, efficiency));
     }
 
     private boolean hasViewOnSky(BlockPos pos) {
         // Check if there's a clear view to the sky above the solar panel
+        BlockPos checkPos = pos.above();
+
+        // Check the position directly above first
+        if (!level.canSeeSky(checkPos)) {
+            return false;
+        }
+
+        // Check for any obstructions up to sky height
         for (int i = 1; i < level.getMaxBuildHeight() - pos.getY(); i++) {
-            BlockPos checkPos = pos.above(i);
+            checkPos = pos.above(i);
             BlockState state = level.getBlockState(checkPos);
-            
-            // If we hit a non-transparent block, no sky access
-            if (!state.propagatesSkylightDown(level, checkPos) && !level.isFluidAtPosition(checkPos, (fluidState -> !fluidState.isEmpty()))) {
+
+            // If we hit a solid, non-transparent block, no sky access
+            if (!state.isAir() && !state.propagatesSkylightDown(level, checkPos)) {
                 return false;
             }
         }
