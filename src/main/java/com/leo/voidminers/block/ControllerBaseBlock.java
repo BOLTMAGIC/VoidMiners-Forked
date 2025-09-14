@@ -33,6 +33,10 @@ public class ControllerBaseBlock extends BaseTransparentBlock implements EntityB
         this.name = name;
     }
 
+    public String getTierName() {
+        return name;
+    }
+
     @Override
     public void onRemove(BlockState pState, Level pLevel, BlockPos pPos, BlockState pNewState, boolean pIsMoving) {
         if (pState.getBlock() != pNewState.getBlock()) {
