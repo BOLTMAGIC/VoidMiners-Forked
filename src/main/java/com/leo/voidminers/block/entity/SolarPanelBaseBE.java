@@ -567,15 +567,10 @@ public class SolarPanelBaseBE extends BlockEntity {
             for (Map.Entry<BlockInWorld, ConfigLoader.SolarModifierConfig> entry : modifierMap.entrySet()) {
                 float resistance = entry.getValue().weatherResistance();
                 if (resistance > 1.0f) {
-                    // Convert resistance to protection level: 2.0 -> 100% protection, 1.5 -> 50% protection
-                    float protectionLevel = (resistance - 1.0f);
-                    float oldPenalty = weatherPenalty;
-                    weatherPenalty = weatherPenalty + (1.0f - weatherPenalty) * protectionLevel;
+                    // Convert resistance to protection boost: 1.5 -> 50% boost, 2.0 -> 100% boost
+                    float protectionBoost = (resistance - 1.0f);
+                    weatherPenalty = weatherPenalty * (1.0f + protectionBoost);
                     weatherPenalty = Math.min(1.0f, weatherPenalty); // Cap at 100% efficiency
-
-                    // Debug logging
-                    LOGGER.info("Weather resistance debug: resistance={}, protectionLevel={}, oldPenalty={}, newPenalty={}",
-                        resistance, protectionLevel, oldPenalty, weatherPenalty);
                 }
             }
         }
