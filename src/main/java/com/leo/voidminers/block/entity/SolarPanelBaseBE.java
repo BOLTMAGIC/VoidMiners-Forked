@@ -487,10 +487,7 @@ public class SolarPanelBaseBE extends BlockEntity {
             float effMod = (2.0f - entry.getValue().efficiency());
             mod *= genMod;
             efficiencyMod *= effMod;
-
-            // Debug logging
-            LOGGER.info("RF/tick modifier debug: generation={}, efficiency={}, efficiencyBoost={}, totalGenMod={}, totalEffMod={}",
-                genMod, entry.getValue().efficiency(), effMod, mod, efficiencyMod);
+            
         }
 
         // Both modifiers multiply together for total generation boost
