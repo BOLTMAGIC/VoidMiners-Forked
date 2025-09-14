@@ -566,8 +566,12 @@ public class SolarPanelBaseBE extends BlockEntity {
             // Apply weather resistance modifiers
             for (Map.Entry<BlockInWorld, ConfigLoader.SolarModifierConfig> entry : modifierMap.entrySet()) {
                 float resistance = entry.getValue().weatherResistance();
-                if (resistance > 1.0f) {
-                    // Convert resistance to protection boost: 1.5 -> 50% boost, 2.0 -> 100% boost
+                if (resistance >= 2.0f) {
+                    // Ultimate tier: complete weather immunity
+                    weatherPenalty = 1.0f;
+                    break; // No need to check other modifiers
+                } else if (resistance > 1.0f) {
+                    // Other tiers: multiplicative boost
                     float protectionBoost = (resistance - 1.0f);
                     weatherPenalty = weatherPenalty * (1.0f + protectionBoost);
                     weatherPenalty = Math.min(1.0f, weatherPenalty); // Cap at 100% efficiency
