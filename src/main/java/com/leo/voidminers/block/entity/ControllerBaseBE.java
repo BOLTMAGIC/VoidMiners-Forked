@@ -53,6 +53,7 @@ public class ControllerBaseBE extends BlockEntity {
         @Override
         protected void onContentsChanged(int slot) {
             super.onContentsChanged(slot);
+            ControllerBaseBE.this.inventoryChanged = true;
             ControllerBaseBE.this.level.sendBlockUpdated(getBlockPos(), getBlockState(), getBlockState(), 3);
         }
     };
@@ -69,6 +70,9 @@ public class ControllerBaseBE extends BlockEntity {
 
     public boolean active;
     public boolean working;
+
+    private boolean canProduceCache = true;
+    private boolean inventoryChanged = true;
 
     private LazyOptional<ModEnergyStorage> lazyEnergyHandler = LazyOptional.empty();
     private LazyOptional<ItemStackHandler> lazyItemHandler = LazyOptional.empty();
@@ -297,6 +301,8 @@ public class ControllerBaseBE extends BlockEntity {
         data.putBoolean("active", active);
         if (structure != null) data.putString("structure", structure.toString());
         data.putBoolean("showStructure", showStructure);
+        data.putBoolean("canProduceCache", canProduceCache);
+        data.putBoolean("inventoryChanged", inventoryChanged);
         pTag.put(VoidMiners.MODID, data);
     }
 
@@ -333,6 +339,14 @@ public class ControllerBaseBE extends BlockEntity {
 
         if (data.contains("showStructure")) {
             showStructure = data.getBoolean("showStructure");
+        }
+
+        if (data.contains("canProduceCache")) {
+            canProduceCache = data.getBoolean("canProduceCache");
+        }
+
+        if (data.contains("inventoryChanged")) {
+            inventoryChanged = data.getBoolean("inventoryChanged");
         }
     }
 
@@ -395,7 +409,7 @@ public class ControllerBaseBE extends BlockEntity {
 
         if(!active) return;
 
-        working = !isItemHandlerFull() && getRfTick() <= energyHandler.getEnergyStored();
+        working = !isItemHandlerFull() && getRfTick() <= energyHandler.getEnergyStored() && canProduceItems();
         level.sendBlockUpdated(getBlockPos(), getBlockState(), getBlockState(), 3);
 
         if (!working) {
@@ -548,6 +562,54 @@ public class ControllerBaseBE extends BlockEntity {
 
     private boolean isItemValid(ItemStack stack, ItemStack handler) {
         return handler.isEmpty() || handler.is(stack.getItem()) && stack.getCount() + handler.getCount() <= handler.getMaxStackSize();
+    }
+
+    private boolean canInsertItem(ItemStack stack) {
+        if (stack.isEmpty()) {
+            return true;
+        }
+
+        for (int i = 0; i < itemHandler.getSlots(); i++) {
+            if (isItemValid(stack, itemHandler.getStackInSlot(i))) {
+                ItemStack remaining = itemHandler.insertItem(i, stack.copy(), true); // simulate = true
+                if (remaining.isEmpty()) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    private boolean canProduceItems() {
+        // Update cache if inventory changed or at start of new cycle
+        if (inventoryChanged || progress == 0) {
+            canProduceCache = calculateCanProduceItems();
+            inventoryChanged = false;
+        }
+
+        return canProduceCache;
+    }
+
+    private boolean calculateCanProduceItems() {
+        List<WeightedStack> allOutputs = new ArrayList<>();
+
+        for (MinerRecipe recipe : allRecipes()) {
+            allOutputs.add(recipe.output().copy());
+        }
+
+        if (allOutputs.isEmpty()) {
+            return false;
+        }
+
+        // Check if any potential output can be inserted
+        for (WeightedStack weightedStack : allOutputs) {
+            ItemStack output = getBoostedStack(weightedStack.stack.copy());
+            if (canInsertItem(output)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     public void drops() {
