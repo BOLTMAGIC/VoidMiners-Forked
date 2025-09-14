@@ -123,7 +123,7 @@ public class ConfigLoader {
             MapUtil.of(
                 MapUtil.createEntry("generation", new SolarModifierConfig(1.15f, 0.9f, 1.0f, Arrays.asList("§eStored energy: §f0 FE/§65.00 MFE", "§9Capacity: §f5.00 MFE", "§aGeneration Boost: §f+15%"))),
                 MapUtil.createEntry("efficiency", new SolarModifierConfig(1.0f, 0.85f, 1.0f, Arrays.asList("§eStored energy: §f0 FE/§65.00 MFE", "§9Capacity: §f5.00 MFE", "§bSpeed Boost: §f+15%"))),
-                MapUtil.createEntry("weather_resistance", new SolarModifierConfig(1.0f, 1.0f, 1.5f, Arrays.asList("§eStored energy: §f0 FE/§65.00 MFE", "§9Capacity: §f5.00 MFE", "§9Weather Protection: §f+50%")))
+                MapUtil.createEntry("weather_resistance", new SolarModifierConfig(1.0f, 1.0f, 1.17f, Arrays.asList("§eStored energy: §f0 FE/§65.00 MFE", "§9Capacity: §f5.00 MFE", "§9Weather Protection: §f+17%")))
             ),
             Arrays.asList("§6RUBETINE SOLAR PANEL", "§eStored energy: §f0 FE/§65.00 MFE", "§9Capacity: §f5.00 MFE", "§aGeneration: §f20 FE/t")
         )),
@@ -131,7 +131,7 @@ public class ConfigLoader {
             MapUtil.of(
                 MapUtil.createEntry("generation", new SolarModifierConfig(1.18f, 0.88f, 1.0f, Arrays.asList("§eStored energy: §f0 FE/§610.00 MFE", "§9Capacity: §f10.00 MFE", "§aGeneration Boost: §f+18%"))),
                 MapUtil.createEntry("efficiency", new SolarModifierConfig(1.0f, 0.83f, 1.0f, Arrays.asList("§eStored energy: §f0 FE/§610.00 MFE", "§9Capacity: §f10.00 MFE", "§bEfficiency Boost: §f+17%"))),
-                MapUtil.createEntry("weather_resistance", new SolarModifierConfig(1.0f, 1.0f, 1.55f, Arrays.asList("§eStored energy: §f0 FE/§610.00 MFE", "§9Capacity: §f10.00 MFE", "§9Weather Protection: §f+55%")))
+                MapUtil.createEntry("weather_resistance", new SolarModifierConfig(1.0f, 1.0f, 1.40f, Arrays.asList("§eStored energy: §f0 FE/§610.00 MFE", "§9Capacity: §f10.00 MFE", "§9Weather Protection: §f+40%")))
             ),
             Arrays.asList("§6AURANTIUM SOLAR PANEL", "§eStored energy: §f0 FE/§610.00 MFE", "§9Capacity: §f10.00 MFE", "§aGeneration: §f40 FE/t")
         )),
@@ -139,7 +139,7 @@ public class ConfigLoader {
             MapUtil.of(
                 MapUtil.createEntry("generation", new SolarModifierConfig(1.21f, 0.86f, 1.0f, Arrays.asList("§eStored energy: §f0 FE/§620.00 MFE", "§9Capacity: §f20.00 MFE", "§aGeneration Boost: §f+21%"))),
                 MapUtil.createEntry("efficiency", new SolarModifierConfig(1.0f, 0.81f, 1.0f, Arrays.asList("§eStored energy: §f0 FE/§620.00 MFE", "§9Capacity: §f20.00 MFE", "§bEfficiency Boost: §f+19%"))),
-                MapUtil.createEntry("weather_resistance", new SolarModifierConfig(1.0f, 1.0f, 1.6f, Arrays.asList("§eStored energy: §f0 FE/§620.00 MFE", "§9Capacity: §f20.00 MFE", "§9Weather Protection: §f+60%")))
+                MapUtil.createEntry("weather_resistance", new SolarModifierConfig(1.0f, 1.0f, 1.57f, Arrays.asList("§eStored energy: §f0 FE/§620.00 MFE", "§9Capacity: §f20.00 MFE", "§9Weather Protection: §f+57%")))
             ),
             Arrays.asList("§6CITRINETINE SOLAR PANEL", "§eStored energy: §f0 FE/§620.00 MFE", "§9Capacity: §f20.00 MFE", "§aGeneration: §f80 FE/t")
         )),
@@ -147,7 +147,7 @@ public class ConfigLoader {
             MapUtil.of(
                 MapUtil.createEntry("generation", new SolarModifierConfig(1.24f, 0.84f, 1.0f, Arrays.asList("§eStored energy: §f0 FE/§640.00 MFE", "§9Capacity: §f40.00 MFE", "§aGeneration Boost: §f+24%"))),
                 MapUtil.createEntry("efficiency", new SolarModifierConfig(1.0f, 0.79f, 1.0f, Arrays.asList("§eStored energy: §f0 FE/§640.00 MFE", "§9Capacity: §f40.00 MFE", "§bEfficiency Boost: §f+21%"))),
-                MapUtil.createEntry("weather_resistance", new SolarModifierConfig(1.0f, 1.0f, 1.65f, Arrays.asList("§eStored energy: §f0 FE/§640.00 MFE", "§9Capacity: §f40.00 MFE", "§9Weather Protection: §f+65%")))
+                MapUtil.createEntry("weather_resistance", new SolarModifierConfig(1.0f, 1.0f, 1.80f, Arrays.asList("§eStored energy: §f0 FE/§640.00 MFE", "§9Capacity: §f40.00 MFE", "§9Weather Protection: §f+80%")))
             ),
             Arrays.asList("§6VERDIUM SOLAR PANEL", "§eStored energy: §f0 FE/§640.00 MFE", "§9Capacity: §f40.00 MFE", "§aGeneration: §f160 FE/t")
         )),
@@ -155,7 +155,7 @@ public class ConfigLoader {
             MapUtil.of(
                 MapUtil.createEntry("generation", new SolarModifierConfig(1.27f, 0.82f, 1.0f, Arrays.asList("§eStored energy: §f0 FE/§680.00 MFE", "§9Capacity: §f80.00 MFE", "§aGeneration Boost: §f+27%"))),
                 MapUtil.createEntry("efficiency", new SolarModifierConfig(1.0f, 0.77f, 1.0f, Arrays.asList("§eStored energy: §f0 FE/§680.00 MFE", "§9Capacity: §f80.00 MFE", "§bEfficiency Boost: §f+23%"))),
-                MapUtil.createEntry("weather_resistance", new SolarModifierConfig(1.0f, 1.0f, 1.7f, Arrays.asList("§eStored energy: §f0 FE/§680.00 MFE", "§9Capacity: §f80.00 MFE", "§9Weather Protection: §f+70%")))
+                MapUtil.createEntry("weather_resistance", new SolarModifierConfig(1.0f, 1.0f, 1.97f, Arrays.asList("§eStored energy: §f0 FE/§680.00 MFE", "§9Capacity: §f80.00 MFE", "§9Weather Protection: §f+97%")))
             ),
             Arrays.asList("§6AZURINE SOLAR PANEL", "§eStored energy: §f0 FE/§680.00 MFE", "§9Capacity: §f80.00 MFE", "§aGeneration: §f320 FE/t")
         )),
@@ -163,7 +163,7 @@ public class ConfigLoader {
             MapUtil.of(
                 MapUtil.createEntry("generation", new SolarModifierConfig(1.3f, 0.8f, 1.0f, Arrays.asList("§eStored energy: §f0 FE/§6160.00 MFE", "§9Capacity: §f160.00 MFE", "§aGeneration Boost: §f+30%"))),
                 MapUtil.createEntry("efficiency", new SolarModifierConfig(1.0f, 0.75f, 1.0f, Arrays.asList("§eStored energy: §f0 FE/§6160.00 MFE", "§9Capacity: §f160.00 MFE", "§bEfficiency Boost: §f+25%"))),
-                MapUtil.createEntry("weather_resistance", new SolarModifierConfig(1.0f, 1.0f, 1.75f, Arrays.asList("§eStored energy: §f0 FE/§6160.00 MFE", "§9Capacity: §f160.00 MFE", "§9Weather Protection: §f+75%")))
+                MapUtil.createEntry("weather_resistance", new SolarModifierConfig(1.0f, 1.0f, 2.20f, Arrays.asList("§eStored energy: §f0 FE/§6160.00 MFE", "§9Capacity: §f160.00 MFE", "§9Weather Protection: §f+120%")))
             ),
             Arrays.asList("§6CAERIUM SOLAR PANEL", "§eStored energy: §f0 FE/§6160.00 MFE", "§9Capacity: §f160.00 MFE", "§aGeneration: §f640 FE/t")
         )),
@@ -171,7 +171,7 @@ public class ConfigLoader {
             MapUtil.of(
                 MapUtil.createEntry("generation", new SolarModifierConfig(1.33f, 0.78f, 1.0f, Arrays.asList("§eStored energy: §f0 FE/§6320.00 MFE", "§9Capacity: §f320.00 MFE", "§aGeneration Boost: §f+33%"))),
                 MapUtil.createEntry("efficiency", new SolarModifierConfig(1.0f, 0.73f, 1.0f, Arrays.asList("§eStored energy: §f0 FE/§6320.00 MFE", "§9Capacity: §f320.00 MFE", "§bEfficiency Boost: §f+27%"))),
-                MapUtil.createEntry("weather_resistance", new SolarModifierConfig(1.0f, 1.0f, 1.8f, Arrays.asList("§eStored energy: §f0 FE/§6320.00 MFE", "§9Capacity: §f320.00 MFE", "§9Weather Protection: §f+80%")))
+                MapUtil.createEntry("weather_resistance", new SolarModifierConfig(1.0f, 1.0f, 2.37f, Arrays.asList("§eStored energy: §f0 FE/§6320.00 MFE", "§9Capacity: §f320.00 MFE", "§9Weather Protection: §f+137%")))
             ),
             Arrays.asList("§6AMETHYSTINE SOLAR PANEL", "§eStored energy: §f0 FE/§6320.00 MFE", "§9Capacity: §f320.00 MFE", "§aGeneration: §f1280 FE/t")
         )),
@@ -179,7 +179,7 @@ public class ConfigLoader {
             MapUtil.of(
                 MapUtil.createEntry("generation", new SolarModifierConfig(1.36f, 0.76f, 1.0f, Arrays.asList("§eStored energy: §f0 FE/§6640.00 MFE", "§9Capacity: §f640.00 MFE", "§aGeneration Boost: §f+36%"))),
                 MapUtil.createEntry("efficiency", new SolarModifierConfig(1.0f, 0.71f, 1.0f, Arrays.asList("§eStored energy: §f0 FE/§6640.00 MFE", "§9Capacity: §f640.00 MFE", "§bEfficiency Boost: §f+29%"))),
-                MapUtil.createEntry("weather_resistance", new SolarModifierConfig(1.0f, 1.0f, 1.85f, Arrays.asList("§eStored energy: §f0 FE/§6640.00 MFE", "§9Capacity: §f640.00 MFE", "§9Weather Protection: §f+85%")))
+                MapUtil.createEntry("weather_resistance", new SolarModifierConfig(1.0f, 1.0f, 2.60f, Arrays.asList("§eStored energy: §f0 FE/§6640.00 MFE", "§9Capacity: §f640.00 MFE", "§9Weather Protection: §f+160%")))
             ),
             Arrays.asList("§6ROSARIUM SOLAR PANEL", "§eStored energy: §f0 FE/§6640.00 MFE", "§9Capacity: §f640.00 MFE", "§aGeneration: §f2560 FE/t")
         )),
@@ -187,7 +187,7 @@ public class ConfigLoader {
             MapUtil.of(
                 MapUtil.createEntry("generation", new SolarModifierConfig(1.45f, 0.7f, 1.0f, Arrays.asList("§eStored energy: §f0 FE/§65.12 GFE", "§9Capacity: §f5.12 GFE", "§aGeneration Boost: §f+45%"))),
                 MapUtil.createEntry("efficiency", new SolarModifierConfig(1.0f, 0.65f, 1.0f, Arrays.asList("§eStored energy: §f0 FE/§65.12 GFE", "§9Capacity: §f5.12 GFE", "§bEfficiency Boost: §f+35%"))),
-                MapUtil.createEntry("weather_resistance", new SolarModifierConfig(1.0f, 1.0f, 2.0f, Arrays.asList("§eStored energy: §f0 FE/§65.12 GFE", "§9Capacity: §f5.12 GFE", "§9Weather Protection: §f+100%")))
+                MapUtil.createEntry("weather_resistance", new SolarModifierConfig(1.0f, 1.0f, 3.33f, Arrays.asList("§eStored energy: §f0 FE/§65.12 GFE", "§9Capacity: §f5.12 GFE", "§9Weather Protection: §f+233%")))
             ),
             Arrays.asList("§6ULTIMATE SOLAR PANEL", "§eStored energy: §f0 FE/§62.15 GFE", "§9Capacity: §f2.15 GFE", "§aGeneration: §f5120 FE/t")
         ))
