@@ -1,0 +1,27 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "A": {
+      "item": "voidminers:amethystine"
+    },
+    "R": {
+      "item": "voidminers:rosarium"
+    },
+    "S": {
+      "item": "minecraft:nether_star"
+    },
+    "D": {
+      "item": "minecraft:dragon_egg"
+    }
+  },
+  "pattern": [
+    "ARA",
+    "RSR",
+    "ADA"
+  ],
+  "result": {
+    "item": "voidminers:ultimate_stellar_core"
+  },
+  "show_notification": true
+}

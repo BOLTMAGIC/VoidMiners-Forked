@@ -1,0 +1,30 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "B": {
+      "item": "voidminers:ultimate_block"
+    },
+    "C": {
+      "item": "voidminers:ultimate_stellar_core"
+    },
+    "G": {
+      "tag": "forge:glass"
+    },
+    "O": {
+      "item": "minecraft:obsidian"
+    },
+    "R": {
+      "item": "voidminers:rosarium_miner"
+    }
+  },
+  "pattern": [
+    "GGG",
+    "GCG",
+    "BRB"
+  ],
+  "result": {
+    "item": "voidminers:ultimate_miner"
+  },
+  "show_notification": true
+}
