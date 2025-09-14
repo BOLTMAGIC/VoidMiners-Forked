@@ -483,8 +483,14 @@ public class SolarPanelBaseBE extends BlockEntity {
         float efficiencyMod = 1.0f;
 
         for (Map.Entry<BlockInWorld, ConfigLoader.SolarModifierConfig> entry : modifierMap.entrySet()) {
-            mod *= entry.getValue().generation(); // From Output modifier (1.5x for Ultimate)
-            efficiencyMod *= (2.0f - entry.getValue().efficiency()); // Convert efficiency to boost: 0.65 -> 1.35 (+35%)
+            float genMod = entry.getValue().generation();
+            float effMod = (2.0f - entry.getValue().efficiency());
+            mod *= genMod;
+            efficiencyMod *= effMod;
+
+            // Debug logging
+            LOGGER.info("RF/tick modifier debug: generation={}, efficiency={}, efficiencyBoost={}, totalGenMod={}, totalEffMod={}",
+                genMod, entry.getValue().efficiency(), effMod, mod, efficiencyMod);
         }
 
         // Both modifiers multiply together for total generation boost
@@ -499,10 +505,15 @@ public class SolarPanelBaseBE extends BlockEntity {
 
         long baseGeneration = config.energyGeneration();
         float efficiency = getSolarEfficiency() / 100.0f; // Convert percentage to decimal
+        long finalRF = Math.max(0, (long) (baseGeneration * totalMod * efficiency));
+
+        // Debug logging
+        LOGGER.info("Final RF calculation: base={}, totalMod={}, efficiency={}%, finalRF={}",
+            baseGeneration, totalMod, getSolarEfficiency(), finalRF);
 
         // Final formula: BaseGeneration * AllModifiers * SolarEfficiency
         // Example Ultimate: 5120 * 2.25 (both modifiers) * 1.0 (100% day) = 11,520 RF/tick
-        return Math.max(0, (long) (baseGeneration * totalMod * efficiency));
+        return finalRF;
     }
 
     public int getMaxProgress() {
@@ -561,8 +572,13 @@ public class SolarPanelBaseBE extends BlockEntity {
                 if (resistance > 1.0f) {
                     // Convert resistance to protection level: 2.0 -> 100% protection, 1.5 -> 50% protection
                     float protectionLevel = (resistance - 1.0f);
+                    float oldPenalty = weatherPenalty;
                     weatherPenalty = weatherPenalty + (1.0f - weatherPenalty) * protectionLevel;
                     weatherPenalty = Math.min(1.0f, weatherPenalty); // Cap at 100% efficiency
+
+                    // Debug logging
+                    LOGGER.info("Weather resistance debug: resistance={}, protectionLevel={}, oldPenalty={}, newPenalty={}",
+                        resistance, protectionLevel, oldPenalty, weatherPenalty);
                 }
             }
         }
