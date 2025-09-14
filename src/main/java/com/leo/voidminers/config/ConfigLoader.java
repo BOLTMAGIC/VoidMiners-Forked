@@ -183,7 +183,7 @@ public class ConfigLoader {
             ),
             Arrays.asList("§6ROSARIUM SOLAR PANEL", "§eStored energy: §f0 FE/§6640.00 MFE", "§9Capacity: §f640.00 MFE", "§aGeneration: §f2560 FE/t")
         )),
-        MapUtil.createEntry("ultimate", new SolarPanelConfig(2147483647, 15, 5120,
+        MapUtil.createEntry("ultimate", new SolarPanelConfig(2147483647L, 15, 5120,
             MapUtil.of(
                 MapUtil.createEntry("generation", new SolarModifierConfig(1.45f, 0.7f, 1.0f, Arrays.asList("§aGeneration Boost: §f+45%"))),
                 MapUtil.createEntry("efficiency", new SolarModifierConfig(1.0f, 0.65f, 1.0f, Arrays.asList("§bEfficiency Boost: §f+35%"))),
@@ -324,12 +324,12 @@ public class ConfigLoader {
         }
     }
 
-    public record SolarPanelConfig(@Expose int energyStorage, @Expose int duration, @Expose int energyGeneration, @Expose Map<String, SolarModifierConfig> modifiers, @Expose List<String> tooltip) {
+    public record SolarPanelConfig(@Expose long energyStorage, @Expose int duration, @Expose long energyGeneration, @Expose Map<String, SolarModifierConfig> modifiers, @Expose List<String> tooltip) {
 
         public static SolarPanelConfig fromBuf(FriendlyByteBuf buf) {
-            int energyStorage = buf.readInt();
+            long energyStorage = buf.readLong();
             int duration = buf.readInt();
-            int energyGeneration = buf.readInt();
+            long energyGeneration = buf.readLong();
 
             int entries = buf.readInt();
 
@@ -352,9 +352,9 @@ public class ConfigLoader {
         }
 
         public void toBuf(FriendlyByteBuf buf) {
-            buf.writeInt(energyStorage);
+            buf.writeLong(energyStorage);
             buf.writeInt(duration);
-            buf.writeInt(energyGeneration);
+            buf.writeLong(energyGeneration);
 
             buf.writeInt(modifiers.size());
 
