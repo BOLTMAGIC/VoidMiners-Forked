@@ -1,0 +1,27 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "B": {
+      "item": "voidminers:solar_rosarium_block"
+    },
+    "C": {
+      "item": "voidminers:solar_amethystine_panel"
+    },
+    "G": {
+      "item": "voidminers:glass_panel"
+    },
+    "O": {
+      "item": "minecraft:daylight_detector"
+    }
+  },
+  "pattern": [
+    "GGG",
+    "GCG",
+    "BOB"
+  ],
+  "result": {
+    "item": "voidminers:solar_rosarium_panel"
+  },
+  "show_notification": true
+}

@@ -204,7 +204,6 @@ public class ConfigLoader {
 
         try {
             if (!file.exists()) {
-                System.out.println("Configuration file does not exist. Creating a new one.");
                 saveDefaultConfig(file, gson);
             } else {
                 try (JsonReader jsonReader = new JsonReader(new FileReader(file))) {
@@ -215,7 +214,6 @@ public class ConfigLoader {
                 }
             }
         } catch (JsonSyntaxException | IOException e) {
-            System.err.println("Invalid configuration file. Regenerating default config.");
             saveDefaultConfig(file, gson);
         }
     }
@@ -225,7 +223,6 @@ public class ConfigLoader {
             if(INSTANCE == null) INSTANCE = new ConfigLoader();
 
             gson.toJson(INSTANCE, ConfigLoader.class, writer);
-            System.out.println("Default configuration file created successfully.");
         } catch (IOException e) {
             throw new RuntimeException("Failed to create default configuration file.", e);
         }

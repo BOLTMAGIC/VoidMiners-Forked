@@ -1,0 +1,24 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "C": {
+      "item": "voidminers:solar_amethystine"
+    },
+    "M": {
+      "item": "voidminers:solar_caerium_output_modifier"
+    },
+    "c": {
+      "item": "minecraft:copper_block"
+    }
+  },
+  "pattern": [
+    "CcC",
+    "cMc",
+    "CcC"
+  ],
+  "result": {
+    "item": "voidminers:solar_amethystine_output_modifier"
+  },
+  "show_notification": true
+}

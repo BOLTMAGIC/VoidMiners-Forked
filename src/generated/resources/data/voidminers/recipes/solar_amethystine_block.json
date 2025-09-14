@@ -1,0 +1,36 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "misc",
+  "ingredients": [
+    {
+      "item": "voidminers:solar_amethystine"
+    },
+    {
+      "item": "voidminers:solar_amethystine"
+    },
+    {
+      "item": "voidminers:solar_amethystine"
+    },
+    {
+      "item": "voidminers:solar_amethystine"
+    },
+    {
+      "item": "voidminers:solar_amethystine"
+    },
+    {
+      "item": "voidminers:solar_amethystine"
+    },
+    {
+      "item": "voidminers:solar_amethystine"
+    },
+    {
+      "item": "voidminers:solar_amethystine"
+    },
+    {
+      "item": "voidminers:solar_amethystine"
+    }
+  ],
+  "result": {
+    "item": "voidminers:solar_amethystine_block"
+  }
+}

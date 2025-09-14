@@ -1,0 +1,21 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "C": {
+      "item": "voidminers:solar_rosarium_block"
+    },
+    "P": {
+      "item": "minecraft:nether_star"
+    }
+  },
+  "pattern": [
+    "CCC",
+    "CPC",
+    "CCC"
+  ],
+  "result": {
+    "item": "voidminers:solar_ultimate_block"
+  },
+  "show_notification": true
+}

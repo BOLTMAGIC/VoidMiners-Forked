@@ -1,0 +1,24 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "C": {
+      "item": "voidminers:solar_rubetine"
+    },
+    "M": {
+      "item": "voidminers:null_modifier"
+    },
+    "c": {
+      "item": "minecraft:copper_block"
+    }
+  },
+  "pattern": [
+    "CcC",
+    "cMc",
+    "CcC"
+  ],
+  "result": {
+    "item": "voidminers:solar_rubetine_output_modifier"
+  },
+  "show_notification": true
+}

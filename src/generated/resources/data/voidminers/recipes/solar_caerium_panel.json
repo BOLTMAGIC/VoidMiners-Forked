@@ -1,0 +1,27 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "B": {
+      "item": "voidminers:solar_caerium_block"
+    },
+    "C": {
+      "item": "voidminers:solar_azurine_panel"
+    },
+    "G": {
+      "item": "voidminers:glass_panel"
+    },
+    "O": {
+      "item": "minecraft:daylight_detector"
+    }
+  },
+  "pattern": [
+    "GGG",
+    "GCG",
+    "BOB"
+  ],
+  "result": {
+    "item": "voidminers:solar_caerium_panel"
+  },
+  "show_notification": true
+}

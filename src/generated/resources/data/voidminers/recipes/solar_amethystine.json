@@ -1,0 +1,25 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "C": {
+      "item": "voidminers:amethystine"
+    },
+    "P": {
+      "item": "voidminers:solar_caerium"
+    },
+    "c": {
+      "item": "minecraft:glowstone_dust"
+    }
+  },
+  "pattern": [
+    "CcC",
+    "cPc",
+    "CcC"
+  ],
+  "result": {
+    "count": 4,
+    "item": "voidminers:solar_amethystine"
+  },
+  "show_notification": true
+}

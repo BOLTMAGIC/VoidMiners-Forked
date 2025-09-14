@@ -1,0 +1,36 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "misc",
+  "ingredients": [
+    {
+      "item": "voidminers:solar_caerium"
+    },
+    {
+      "item": "voidminers:solar_caerium"
+    },
+    {
+      "item": "voidminers:solar_caerium"
+    },
+    {
+      "item": "voidminers:solar_caerium"
+    },
+    {
+      "item": "voidminers:solar_caerium"
+    },
+    {
+      "item": "voidminers:solar_caerium"
+    },
+    {
+      "item": "voidminers:solar_caerium"
+    },
+    {
+      "item": "voidminers:solar_caerium"
+    },
+    {
+      "item": "voidminers:solar_caerium"
+    }
+  ],
+  "result": {
+    "item": "voidminers:solar_caerium_block"
+  }
+}

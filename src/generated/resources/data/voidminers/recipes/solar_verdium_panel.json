@@ -1,0 +1,27 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "B": {
+      "item": "voidminers:solar_verdium_block"
+    },
+    "C": {
+      "item": "voidminers:solar_citrinetine_panel"
+    },
+    "G": {
+      "item": "voidminers:glass_panel"
+    },
+    "O": {
+      "item": "minecraft:daylight_detector"
+    }
+  },
+  "pattern": [
+    "GGG",
+    "GCG",
+    "BOB"
+  ],
+  "result": {
+    "item": "voidminers:solar_verdium_panel"
+  },
+  "show_notification": true
+}

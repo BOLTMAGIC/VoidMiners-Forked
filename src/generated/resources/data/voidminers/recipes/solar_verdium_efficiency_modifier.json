@@ -1,0 +1,24 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "C": {
+      "item": "voidminers:solar_verdium"
+    },
+    "M": {
+      "item": "voidminers:solar_citrinetine_efficiency_modifier"
+    },
+    "r": {
+      "item": "minecraft:redstone_block"
+    }
+  },
+  "pattern": [
+    "CrC",
+    "rMr",
+    "CrC"
+  ],
+  "result": {
+    "item": "voidminers:solar_verdium_efficiency_modifier"
+  },
+  "show_notification": true
+}

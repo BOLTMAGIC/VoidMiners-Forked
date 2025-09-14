@@ -1,0 +1,36 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "misc",
+  "ingredients": [
+    {
+      "item": "voidminers:solar_rubetine"
+    },
+    {
+      "item": "voidminers:solar_rubetine"
+    },
+    {
+      "item": "voidminers:solar_rubetine"
+    },
+    {
+      "item": "voidminers:solar_rubetine"
+    },
+    {
+      "item": "voidminers:solar_rubetine"
+    },
+    {
+      "item": "voidminers:solar_rubetine"
+    },
+    {
+      "item": "voidminers:solar_rubetine"
+    },
+    {
+      "item": "voidminers:solar_rubetine"
+    },
+    {
+      "item": "voidminers:solar_rubetine"
+    }
+  ],
+  "result": {
+    "item": "voidminers:solar_rubetine_block"
+  }
+}

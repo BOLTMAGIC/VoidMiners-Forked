@@ -3,6 +3,7 @@ package com.leo.voidminers.datagen;
 import com.leo.voidminers.VoidMiners;
 import com.leo.voidminers.init.ModBlocks;
 import com.leo.voidminers.init.CrystalSet;
+import com.leo.voidminers.init.SolarSet;
 import com.leo.voidminers.recipe.MinerRecipe;
 import com.leo.voidminers.recipe.WeightedStack;
 import net.minecraft.data.PackOutput;
@@ -387,6 +388,164 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
             7,
             Level.NETHER
         ).save(pWriter);
+
+        // Solar items recipes
+        // First, add the base rubetine solar crystal recipe
+        ShapedRecipeBuilder.shaped(
+                RecipeCategory.MISC,
+                SolarSet.RUBETINE.SOLAR_CRYSTAL.get(),
+                4
+            )
+            .pattern("GDG")
+            .pattern("DRD")
+            .pattern("GDG")
+            .define('G', Items.GLOWSTONE_DUST)
+            .define('D', Items.DIAMOND)
+            .define('R', Items.REDSTONE)
+            .unlockedBy("hasItem", has(Items.DIAMOND))
+            .save(pWriter);
+
+        List<SolarSet> allSolarSets = SolarSet.sets();
+        for (int i = 0; i < allSolarSets.size(); i++) {
+            SolarSet set = allSolarSets.get(i);
+
+            // Skip sets without crystals (like ultimate set) for crystal-dependent recipes
+            if (set.SOLAR_CRYSTAL != null) {
+                // Progressive solar crystal recipes (skip rubetine as it's already done above)
+                if (i > 0) {
+                    ShapedRecipeBuilder.shaped(
+                            RecipeCategory.MISC,
+                            set.SOLAR_CRYSTAL.get(),
+                            4
+                        )
+                        .pattern("CcC")
+                        .pattern("cPc")
+                        .pattern("CcC")
+                        .define('C', CrystalSet.sets().get(i).CRYSTAL.get())
+                        .define('c', Items.GLOWSTONE_DUST)
+                        .define('P', allSolarSets.get(i - 1).SOLAR_CRYSTAL.get())
+                        .unlockedBy("hasItem", has(allSolarSets.get(i - 1).SOLAR_CRYSTAL.get()))
+                        .save(pWriter);
+                }
+
+                // Solar crystal block recipes
+                ShapelessRecipeBuilder.shapeless(
+                        RecipeCategory.MISC,
+                        set.SOLAR_CRYSTAL_BLOCK.get(),
+                        1
+                    )
+                    .requires(set.SOLAR_CRYSTAL.get())
+                    .requires(set.SOLAR_CRYSTAL.get())
+                    .requires(set.SOLAR_CRYSTAL.get())
+                    .requires(set.SOLAR_CRYSTAL.get())
+                    .requires(set.SOLAR_CRYSTAL.get())
+                    .requires(set.SOLAR_CRYSTAL.get())
+                    .requires(set.SOLAR_CRYSTAL.get())
+                    .requires(set.SOLAR_CRYSTAL.get())
+                    .requires(set.SOLAR_CRYSTAL.get())
+                    .unlockedBy("hasItem", has(set.SOLAR_CRYSTAL.get()))
+                    .save(pWriter);
+
+                ShapelessRecipeBuilder.shapeless(
+                        RecipeCategory.MISC,
+                        set.SOLAR_CRYSTAL.get(),
+                        9
+                    )
+                    .requires(set.SOLAR_CRYSTAL_BLOCK.get())
+                    .unlockedBy("hasItem", has(set.SOLAR_CRYSTAL_BLOCK.get()))
+                    .save(pWriter, ResourceLocation.fromNamespaceAndPath(VoidMiners.MODID, "solar_" + set.name + "_crystal_from_block"));
+            } else {
+                // For ultimate set without crystal, create crystal block from previous tier
+                ShapedRecipeBuilder.shaped(
+                        RecipeCategory.MISC,
+                        set.SOLAR_CRYSTAL_BLOCK.get(),
+                        1
+                    )
+                    .pattern("CCC")
+                    .pattern("CPC")
+                    .pattern("CCC")
+                    .define('C', allSolarSets.get(i - 1).SOLAR_CRYSTAL_BLOCK.get())
+                    .define('P', Items.NETHER_STAR)
+                    .unlockedBy("hasItem", has(allSolarSets.get(i - 1).SOLAR_CRYSTAL_BLOCK.get()))
+                    .save(pWriter);
+            }
+
+            // Solar panel controller recipes
+            ShapedRecipeBuilder.shaped(
+                    RecipeCategory.MISC,
+                    set.SOLAR_PANEL_CONTROLLER.get(),
+                    1
+                )
+                .pattern("GGG")
+                .pattern("GCG")
+                .pattern("BOB")
+                .define('G', ModBlocks.GLASS_PANEL.get())
+                .define('B', set.SOLAR_CRYSTAL_BLOCK.get())
+                .define('O', Items.DAYLIGHT_DETECTOR)
+                .define('C', i > 0 ? allSolarSets.get(i - 1).SOLAR_PANEL_CONTROLLER.get() : Items.REDSTONE_BLOCK)
+                .unlockedBy("hasItem", has(set.SOLAR_CRYSTAL_BLOCK.get()))
+                .save(pWriter);
+
+            // Solar frame recipes
+            ShapedRecipeBuilder.shaped(
+                    RecipeCategory.MISC,
+                    set.SOLAR_FRAME.get(),
+                    1
+                )
+                .pattern("IGI")
+                .pattern("GFG")
+                .pattern("IGI")
+                .define('I', set.SOLAR_CRYSTAL != null ? set.SOLAR_CRYSTAL.get() : Items.NETHER_STAR)
+                .define('G', Items.GOLD_INGOT)
+                .define('F', i > 0 ? allSolarSets.get(i - 1).SOLAR_FRAME.get() : ModBlocks.FRAME_BASE.get())
+                .unlockedBy("hasItem", has(ModBlocks.FRAME_BASE.get()))
+                .save(pWriter);
+
+            // Solar efficiency modifier recipes
+            ShapedRecipeBuilder.shaped(
+                    RecipeCategory.MISC,
+                    set.EFFICIENCY_MOD.get(),
+                    1
+                )
+                .pattern("CrC")
+                .pattern("rMr")
+                .pattern("CrC")
+                .define('C', set.SOLAR_CRYSTAL != null ? set.SOLAR_CRYSTAL.get() : Items.NETHER_STAR)
+                .define('r', Items.REDSTONE_BLOCK)
+                .define('M', i > 0 ? allSolarSets.get(i - 1).EFFICIENCY_MOD.get() : ModBlocks.NULL_MOD.get())
+                .unlockedBy("hasItem", has(ModBlocks.NULL_MOD.get()))
+                .save(pWriter);
+
+            // Solar weather modifier recipes
+            ShapedRecipeBuilder.shaped(
+                    RecipeCategory.MISC,
+                    set.WEATHER_MOD.get(),
+                    1
+                )
+                .pattern("CpC")
+                .pattern("pMp")
+                .pattern("CpC")
+                .define('C', set.SOLAR_CRYSTAL != null ? set.SOLAR_CRYSTAL.get() : Items.NETHER_STAR)
+                .define('p', Items.PHANTOM_MEMBRANE)
+                .define('M', i > 0 ? allSolarSets.get(i - 1).WEATHER_MOD.get() : ModBlocks.NULL_MOD.get())
+                .unlockedBy("hasItem", has(ModBlocks.NULL_MOD.get()))
+                .save(pWriter);
+
+            // Solar output modifier recipes
+            ShapedRecipeBuilder.shaped(
+                    RecipeCategory.MISC,
+                    set.OUTPUT_MOD.get(),
+                    1
+                )
+                .pattern("CcC")
+                .pattern("cMc")
+                .pattern("CcC")
+                .define('C', set.SOLAR_CRYSTAL != null ? set.SOLAR_CRYSTAL.get() : Items.NETHER_STAR)
+                .define('c', Items.COPPER_BLOCK)
+                .define('M', i > 0 ? allSolarSets.get(i - 1).OUTPUT_MOD.get() : ModBlocks.NULL_MOD.get())
+                .unlockedBy("hasItem", has(ModBlocks.NULL_MOD.get()))
+                .save(pWriter);
+        }
     }
 
 }

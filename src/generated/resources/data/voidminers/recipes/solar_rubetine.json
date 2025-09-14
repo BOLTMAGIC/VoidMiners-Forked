@@ -1,0 +1,25 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "D": {
+      "item": "minecraft:diamond"
+    },
+    "G": {
+      "item": "minecraft:glowstone_dust"
+    },
+    "R": {
+      "item": "minecraft:redstone"
+    }
+  },
+  "pattern": [
+    "GDG",
+    "DRD",
+    "GDG"
+  ],
+  "result": {
+    "count": 4,
+    "item": "voidminers:solar_rubetine"
+  },
+  "show_notification": true
+}

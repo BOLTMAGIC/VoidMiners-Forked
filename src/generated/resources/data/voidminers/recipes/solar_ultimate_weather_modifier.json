@@ -1,0 +1,24 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "C": {
+      "item": "minecraft:nether_star"
+    },
+    "M": {
+      "item": "voidminers:solar_rosarium_weather_modifier"
+    },
+    "p": {
+      "item": "minecraft:phantom_membrane"
+    }
+  },
+  "pattern": [
+    "CpC",
+    "pMp",
+    "CpC"
+  ],
+  "result": {
+    "item": "voidminers:solar_ultimate_weather_modifier"
+  },
+  "show_notification": true
+}

@@ -34,8 +34,6 @@ import org.jetbrains.annotations.Nullable;
 import org.mangorage.mangomultiblock.core.manager.MultiBlockManager;
 import org.mangorage.mangomultiblock.core.manager.RegisteredMultiBlockPattern;
 import org.mangorage.mangomultiblock.core.misc.MultiblockMatchResult;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -43,8 +41,6 @@ import java.util.List;
 import java.util.Map;
 
 public class SolarPanelBaseBE extends BlockEntity {
-    
-    private static final Logger LOGGER = LoggerFactory.getLogger(SolarPanelBaseBE.class);
 
     public static final int ENERGY_CAPACITY = 1000000;
 
@@ -93,7 +89,6 @@ public class SolarPanelBaseBE extends BlockEntity {
         }
 
         if (name == null) {
-            LOGGER.warn("Solar panel name is null, using default energy storage");
             energyHandler = new ModEnergyStorage((long)ENERGY_CAPACITY, (long)ENERGY_CAPACITY, (long)ENERGY_CAPACITY, energyHandler != null ? energyHandler.getLongEnergyStored() : 0);
             lazyEnergyHandler = LazyOptional.of(() -> energyHandler);
             return;
@@ -101,7 +96,6 @@ public class SolarPanelBaseBE extends BlockEntity {
 
         ConfigLoader.SolarPanelConfig config = ConfigLoader.getInstance().getSolarPanelConfig(name);
         if (config == null) {
-            LOGGER.warn("Solar panel config is null for {}, using default", name);
             energyHandler = new ModEnergyStorage((long)ENERGY_CAPACITY, (long)ENERGY_CAPACITY, (long)ENERGY_CAPACITY, energyHandler != null ? energyHandler.getLongEnergyStored() : 0);
             lazyEnergyHandler = LazyOptional.of(() -> energyHandler);
             return;
@@ -471,7 +465,6 @@ public class SolarPanelBaseBE extends BlockEntity {
 
     public long getRfTick() {
         if (name == null) {
-            LOGGER.warn("Solar panel name is null, returning 0 RF/tick");
             return 0;
         }
 
@@ -496,7 +489,6 @@ public class SolarPanelBaseBE extends BlockEntity {
 
         ConfigLoader.SolarPanelConfig config = ConfigLoader.getInstance().getSolarPanelConfig(name);
         if (config == null) {
-            LOGGER.warn("Solar panel config is null for {}, returning 0 RF/tick", name);
             return 0;
         }
 
@@ -504,9 +496,6 @@ public class SolarPanelBaseBE extends BlockEntity {
         float efficiency = getSolarEfficiency() / 100.0f; // Convert percentage to decimal
         long finalRF = Math.max(0, (long) (baseGeneration * totalMod * efficiency));
 
-        // Debug logging
-        LOGGER.info("Final RF calculation: base={}, totalMod={}, efficiency={}%, finalRF={}",
-            baseGeneration, totalMod, getSolarEfficiency(), finalRF);
 
         // Final formula: BaseGeneration * AllModifiers * SolarEfficiency
         // Example Ultimate: 5120 * 2.25 (both modifiers) * 1.0 (100% day) = 11,520 RF/tick

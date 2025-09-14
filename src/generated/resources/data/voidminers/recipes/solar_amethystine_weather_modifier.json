@@ -1,0 +1,24 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "C": {
+      "item": "voidminers:solar_amethystine"
+    },
+    "M": {
+      "item": "voidminers:solar_caerium_weather_modifier"
+    },
+    "p": {
+      "item": "minecraft:phantom_membrane"
+    }
+  },
+  "pattern": [
+    "CpC",
+    "pMp",
+    "CpC"
+  ],
+  "result": {
+    "item": "voidminers:solar_amethystine_weather_modifier"
+  },
+  "show_notification": true
+}

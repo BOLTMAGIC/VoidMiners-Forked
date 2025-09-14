@@ -1,0 +1,24 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "F": {
+      "item": "voidminers:solar_caerium_frame"
+    },
+    "G": {
+      "item": "minecraft:gold_ingot"
+    },
+    "I": {
+      "item": "voidminers:solar_amethystine"
+    }
+  },
+  "pattern": [
+    "IGI",
+    "GFG",
+    "IGI"
+  ],
+  "result": {
+    "item": "voidminers:solar_amethystine_frame"
+  },
+  "show_notification": true
+}
