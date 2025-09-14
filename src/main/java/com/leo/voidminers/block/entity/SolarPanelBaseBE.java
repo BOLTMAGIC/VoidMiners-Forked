@@ -484,7 +484,7 @@ public class SolarPanelBaseBE extends BlockEntity {
 
         for (Map.Entry<BlockInWorld, ConfigLoader.SolarModifierConfig> entry : modifierMap.entrySet()) {
             mod *= entry.getValue().generation(); // From Output modifier (1.5x for Ultimate)
-            efficiencyMod *= entry.getValue().efficiency(); // From Efficiency modifier (1.5x for Ultimate)
+            efficiencyMod *= (2.0f - entry.getValue().efficiency()); // Convert efficiency to boost: 0.65 -> 1.35 (+35%)
         }
 
         // Both modifiers multiply together for total generation boost
@@ -559,8 +559,10 @@ public class SolarPanelBaseBE extends BlockEntity {
             for (Map.Entry<BlockInWorld, ConfigLoader.SolarModifierConfig> entry : modifierMap.entrySet()) {
                 float resistance = entry.getValue().weatherResistance();
                 if (resistance > 1.0f) {
-                    // Weather resistance reduces the penalty
-                    weatherPenalty = Math.min(1.0f, weatherPenalty * resistance);
+                    // Convert resistance to protection level: 2.0 -> 100% protection, 1.5 -> 50% protection
+                    float protectionLevel = (resistance - 1.0f);
+                    weatherPenalty = weatherPenalty + (1.0f - weatherPenalty) * protectionLevel;
+                    weatherPenalty = Math.min(1.0f, weatherPenalty); // Cap at 100% efficiency
                 }
             }
         }
