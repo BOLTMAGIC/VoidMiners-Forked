@@ -259,8 +259,11 @@ public class ConfigLoader {
         String blockName = ForgeRegistries.BLOCKS.getKey(block).getPath();
 
         // For solar modifiers, the format is: solar_<tier>_<type>_modifier
-        // Example: solar_ultimate_efficiency_modifier
+        // Example: solar_ultimate_weather_modifier
         String[] parts = blockName.split("_");
+
+        // Get the modifier tier from block name, not the solar panel tier
+        String modifierTier = parts.length >= 2 ? parts[1] : "unknown";
 
         // Get the modifier type (efficiency, weather, output)
         String modifierType = parts.length >= 3 ? parts[2] : "unknown";
@@ -273,7 +276,7 @@ public class ConfigLoader {
             default -> modifierType;
         };
 
-        return getSolarModifierConfig(solarTier, solarModifierType);
+        return getSolarModifierConfig(modifierTier, solarModifierType);
     }
 
     public record MinerConfig(@Expose int energyStorage, @Expose int duration, @Expose int energyTick, @Expose Map<String, ModifierConfig> modifiers, @Expose List<String> tooltip) {
