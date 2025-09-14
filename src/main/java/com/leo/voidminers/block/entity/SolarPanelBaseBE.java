@@ -28,6 +28,7 @@ import net.minecraft.world.level.block.state.pattern.BlockInWorld;
 import net.minecraftforge.common.capabilities.Capability;
 import net.minecraftforge.common.capabilities.ForgeCapabilities;
 import net.minecraftforge.common.util.LazyOptional;
+import net.minecraftforge.energy.IEnergyStorage;
 import net.minecraftforge.items.ItemStackHandler;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -438,6 +439,9 @@ public class SolarPanelBaseBE extends BlockEntity {
             energyHandler.addEnergy(energyGenerated);
         }
 
+        // Actively push energy to adjacent blocks/cables
+        pushEnergyToNeighbors();
+
         pLevel.sendBlockUpdated(pPos, pState, pState, 3);
         sync();
 
@@ -445,6 +449,35 @@ public class SolarPanelBaseBE extends BlockEntity {
             progress = 0;
         }
         sync();
+    }
+
+    private void pushEnergyToNeighbors() {
+        if (level == null || level.isClientSide) return;
+        if (energyHandler == null) return;
+
+        long available = energyHandler.getLongEnergyStored();
+        if (available <= 0) return;
+
+        for (Direction dir : Direction.values()) {
+            BlockPos neighborPos = worldPosition.relative(dir);
+            BlockEntity neighbor = level.getBlockEntity(neighborPos);
+            if (neighbor == null) continue;
+
+            LazyOptional<IEnergyStorage> cap = neighbor.getCapability(ForgeCapabilities.ENERGY, dir.getOpposite());
+            if (!cap.isPresent()) continue;
+
+            IEnergyStorage receiver = cap.orElse(null);
+            if (receiver == null) continue;
+
+            if (available <= 0) break;
+
+            int toSend = (int) Math.min(available, Integer.MAX_VALUE);
+            int accepted = receiver.receiveEnergy(toSend, false);
+            if (accepted > 0) {
+                energyHandler.removeEnergy(accepted);
+                available -= accepted;
+            }
+        }
     }
 
     @Override

@@ -101,4 +101,32 @@ public class ModEnergyStorage extends EnergyStorage {
     public void addEnergy(int add) {
         addEnergy((long)add);
     }
+
+    @Override
+    public int receiveEnergy(int maxReceive, boolean simulate) {
+        if (!canReceive()) return 0;
+
+        int receivable = Math.min(maxReceive, this.maxReceive);
+        long longReceivable = Math.min((long) receivable, longCapacity - longEnergy);
+
+        if (!simulate && longReceivable > 0) {
+            longEnergy += longReceivable;
+            this.energy = longEnergy > Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) longEnergy;
+        }
+        return (int) longReceivable;
+    }
+
+    @Override
+    public int extractEnergy(int maxExtract, boolean simulate) {
+        if (!canExtract()) return 0;
+
+        int extractable = Math.min(maxExtract, this.maxExtract);
+        long longExtractable = Math.min((long) extractable, longEnergy);
+
+        if (!simulate && longExtractable > 0) {
+            longEnergy -= longExtractable;
+            this.energy = longEnergy > Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) longEnergy;
+        }
+        return (int) longExtractable;
+    }
 }
