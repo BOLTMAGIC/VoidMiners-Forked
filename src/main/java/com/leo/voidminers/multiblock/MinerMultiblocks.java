@@ -740,7 +740,7 @@ public class MinerMultiblocks {
                 " FMPPPPPMF ",
                 "FMPPPPPPPMF",
                 "FMPPPPPPPMF",
-                "FMPPPPPPPMP",
+                "FMPPPPPPPMF",
                 "FMPPPPPPPMF",
                 "FMPPPPPPPMF",
                 " FMPPPPPMF ",
