@@ -741,7 +741,7 @@ public class SolarPanelMultiblocks {
                             " FMPPPPPMF ",
                             "FMPPPPPPPMF",
                             "FMPPPPPPPMF",
-                            "FMPPPPPPPMP",
+                            "FMPPPPPPPMF",
                             "FMPPPPPPPMF",
                             "FMPPPPPPPMF",
                             " FMPPPPPMF ",
