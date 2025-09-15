@@ -195,9 +195,10 @@ public class ConfigLoader {
 
     public void load() {
         Gson gson = new GsonBuilder()
-            .excludeFieldsWithoutExposeAnnotation()
-            .setPrettyPrinting()
-            .create();
+                .excludeFieldsWithoutExposeAnnotation()
+                .setPrettyPrinting()
+                .disableHtmlEscaping()
+                .create();
 
         Path configPath = FMLPaths.CONFIGDIR.get().resolve(CONFIG_FILE);
         File file = configPath.toFile();
@@ -206,11 +207,13 @@ public class ConfigLoader {
             if (!file.exists()) {
                 saveDefaultConfig(file, gson);
             } else {
-                try (JsonReader jsonReader = new JsonReader(new FileReader(file))) {
-                    INSTANCE = gson.fromJson(jsonReader, ConfigLoader.class);
-                    if (INSTANCE == null) {
-                        throw new JsonSyntaxException("Parsed configuration is null.");
-                    }
+                String jsonContent = new String(java.nio.file.Files.readAllBytes(file.toPath()));
+                jsonContent = jsonContent.replace("�", "§")
+                        .replace("\\u00a7", "§");
+
+                INSTANCE = gson.fromJson(jsonContent, ConfigLoader.class);
+                if (INSTANCE == null) {
+                    throw new JsonSyntaxException("Parsed configuration is null.");
                 }
             }
         } catch (JsonSyntaxException | IOException e) {
@@ -222,7 +225,9 @@ public class ConfigLoader {
         try (FileWriter writer = new FileWriter(file)) {
             if(INSTANCE == null) INSTANCE = new ConfigLoader();
 
-            gson.toJson(INSTANCE, ConfigLoader.class, writer);
+            String json = gson.toJson(INSTANCE);
+            json = json.replace("§", "\\u00a7"); // § zu Unicode escape
+            writer.write(json);
         } catch (IOException e) {
             throw new RuntimeException("Failed to create default configuration file.", e);
         }
