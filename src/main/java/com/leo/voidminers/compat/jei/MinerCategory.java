@@ -78,10 +78,14 @@ public class MinerCategory implements IRecipeCategory<MinerRecipe> {
 
         Font font = Minecraft.getInstance().font;
 
+        // Calculate text width and position icon accordingly
+        int textWidth = font.width(weight);
+        int iconX = 24 + textWidth + 4; // Text position + text width + small gap
+
         guiGraphics.drawString(font, weight, 24, 4, 0xFFFFFFFF);
         guiGraphics.blit(
             texture,
-            99,
+            iconX,
             -1,
             0,
             0,
@@ -91,7 +95,7 @@ public class MinerCategory implements IRecipeCategory<MinerRecipe> {
             16
         );
 
-        if (!isHovering(mouseX, mouseY, 99, 0, 115, 16)) {
+        if (!isHovering(mouseX, mouseY, iconX, 0, iconX + 16, 16)) {
             return;
         }
         guiGraphics.renderTooltip(font, Component.translatable(dimensionName), (int) mouseX, (int) mouseY - 10);
@@ -105,36 +109,16 @@ public class MinerCategory implements IRecipeCategory<MinerRecipe> {
     }
 
     public static String customFormat(double number) {
-        String numberStr = Double.toString(number);
-        String[] parts = numberStr.split("\\.");
-
-        String decimalPart = parts.length > 1 ? parts[1] : "";
-
-        int lastNumber = 0;
-        int checkNumber = 0;
-        boolean checkNext = true;
-        int zeroCount = 0;
-
-        for (int i = 0; i < decimalPart.length(); i++) {
-            if (decimalPart.charAt(i) != '0') {
-                int currentCheck = Integer.parseInt(String.valueOf(decimalPart.charAt(i)));
-                if (checkNext) {
-                    lastNumber = currentCheck;
-                    checkNext = false;
-                } else {
-                    checkNumber = currentCheck;
-                    break;
-                }
-            } else {
-                zeroCount++;
-            }
+        if (number == 0.0) {
+            return "0";
         }
 
-        if (checkNumber >= 6) {
-            lastNumber++;
-        }
+        // Remove trailing zeros and unnecessary decimal point/comma
+        String formatted = String.format("%.10f", number);
+        formatted = formatted.replaceAll("0+$", "");
+        formatted = formatted.replaceAll("[.,]$", "");
 
-        return parts[0] + "." + "0".repeat(Math.max(0, zeroCount)) + lastNumber;
+        return formatted;
     }
 
     public static String getDimensionIcon(ResourceKey<Level> dimension) {

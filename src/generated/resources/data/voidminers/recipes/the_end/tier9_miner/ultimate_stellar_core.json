@@ -1,8 +1,8 @@
 {
   "type": "voidminers:miner",
-  "allowHigherTiers": true,
-  "dimension": "minecraft:the_nether",
-  "minTier": 8,
+  "allowHigherTiers": false,
+  "dimension": "minecraft:the_end",
+  "minTier": 9,
   "output": {
     "item": "voidminers:ultimate_stellar_core",
     "weight": 1.0
