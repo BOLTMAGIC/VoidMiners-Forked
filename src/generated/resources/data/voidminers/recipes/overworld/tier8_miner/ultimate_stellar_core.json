@@ -1,0 +1,10 @@
+{
+  "type": "voidminers:miner",
+  "allowHigherTiers": true,
+  "dimension": "minecraft:overworld",
+  "minTier": 8,
+  "output": {
+    "item": "voidminers:ultimate_stellar_core",
+    "weight": 0.5
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "type": "voidminers:miner",
+  "allowHigherTiers": true,
+  "dimension": "minecraft:the_nether",
+  "minTier": 8,
+  "output": {
+    "item": "voidminers:ultimate_stellar_core",
+    "weight": 1.0
+  }
+}

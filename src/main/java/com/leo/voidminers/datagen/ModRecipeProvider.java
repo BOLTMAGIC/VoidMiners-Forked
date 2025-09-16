@@ -550,20 +550,24 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
             .unlockedBy("hasItem", has(Items.NETHER_STAR))
             .save(pWriter);
 
-        // Ultimate Stellar Core recipe
-        ShapedRecipeBuilder.shaped(
-                RecipeCategory.MISC,
+        // Ultimate Stellar Core as miner output (tier 8, ultimate tier)
+        MinerRecipe.Builder.builder(
+            new WeightedStack(
                 ModItems.ULTIMATE_STELLAR_CORE.get(),
-                1
-            )
-            .pattern("SDS")
-            .pattern("DND")
-            .pattern("SDS")
-            .define('S', SolarSet.ROSARIUM.SOLAR_CRYSTAL_BLOCK.get())
-            .define('D', Blocks.DIAMOND_BLOCK)
-            .define('N', Items.NETHER_STAR)
-            .unlockedBy("hasItem", has(Items.NETHER_STAR))
-            .save(pWriter);
+                0.5f  // Very rare drop
+            ),
+            8,  // Tier 8 (Ultimate tier)
+            Level.OVERWORLD
+        ).save(pWriter);
+
+        MinerRecipe.Builder.builder(
+            new WeightedStack(
+                ModItems.ULTIMATE_STELLAR_CORE.get(),
+                1f  // Slightly more common in Nether
+            ),
+            8,  // Tier 8 (Ultimate tier)
+            Level.NETHER
+        ).save(pWriter);
     }
 
 }
