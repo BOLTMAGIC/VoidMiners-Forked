@@ -48,7 +48,7 @@ public class ConfigLoader {
             )),
             MapUtil.createEntry("aurantium", new MinerConfig(25000000, 900, 350,
                     MapUtil.of(
-                            MapUtil.createEntry("energy", new ModifierConfig(0.83f, 1.00f, 1.00f, Arrays.asList("§6Energy Efficiency: §f-17% consumption", "§eCustomizable tooltip line 2"))),
+                            MapUtil.createEntry("energy", new ModifierConfig(0.83f, 1.00f, 1.00f, Arrays.asList("§6Energy Efficiency: §f-17% consumption", "§eNo other changes"))),
                             MapUtil.createEntry("speed", new ModifierConfig(1.12f, 0.88f, 1.00f, Arrays.asList("§aSpeed Boost: §f+12% faster", "§eEnergy: §f+12% consumption"))),
                             MapUtil.createEntry("item", new ModifierConfig(1.55f, 1.00f, 1.60f, Arrays.asList("§bItem Multiplier: §f+60% items", "§eEnergy: §f+55% consumption")))
                     ),
@@ -56,7 +56,7 @@ public class ConfigLoader {
             )),
             MapUtil.createEntry("citrinetine", new MinerConfig(50000000,800, 400,
                     MapUtil.of(
-                            MapUtil.createEntry("energy", new ModifierConfig(0.81f, 1.00f, 1.00f, Arrays.asList("§6Energy Efficiency: §f-19% consumption", "§eCustomizable tooltip line 2"))),
+                            MapUtil.createEntry("energy", new ModifierConfig(0.81f, 1.00f, 1.00f, Arrays.asList("§6Energy Efficiency: §f-19% consumption", "§eNo other changes"))),
                             MapUtil.createEntry("speed", new ModifierConfig(1.14f, 0.86f, 1.00f, Arrays.asList("§aSpeed Boost: §f+14% faster", "§eEnergy: §f+14% consumption"))),
                             MapUtil.createEntry("item", new ModifierConfig(1.60f, 1.00f, 1.70f, Arrays.asList("§bItem Multiplier: §f+70% items", "§eEnergy: §f+60% consumption")))
                     ),
@@ -64,7 +64,7 @@ public class ConfigLoader {
             )),
             MapUtil.createEntry("verdium", new MinerConfig(100000000,700, 450,
                     MapUtil.of(
-                            MapUtil.createEntry("energy", new ModifierConfig(0.79f, 1.00f, 1.00f, Arrays.asList("§6Energy Efficiency: §f-21% consumption", "§eCustomizable tooltip line 2"))),
+                            MapUtil.createEntry("energy", new ModifierConfig(0.79f, 1.00f, 1.00f, Arrays.asList("§6Energy Efficiency: §f-21% consumption", "§eNo other changes"))),
                             MapUtil.createEntry("speed", new ModifierConfig(1.16f, 0.84f, 1.00f, Arrays.asList("§aSpeed Boost: §f+16% faster", "§eEnergy: §f+16% consumption"))),
                             MapUtil.createEntry("item", new ModifierConfig(1.65f, 1.00f, 1.80f, Arrays.asList("§bItem Multiplier: §f+80% items", "§eEnergy: §f+65% consumption")))
                     ),
@@ -72,7 +72,7 @@ public class ConfigLoader {
             )),
             MapUtil.createEntry("azurine", new MinerConfig(250000000,600, 500,
                     MapUtil.of(
-                            MapUtil.createEntry("energy", new ModifierConfig(0.77f, 1.00f, 1.00f, Arrays.asList("§6Energy Efficiency: §f-23% consumption", "§eCustomizable tooltip line 2"))),
+                            MapUtil.createEntry("energy", new ModifierConfig(0.77f, 1.00f, 1.00f, Arrays.asList("§6Energy Efficiency: §f-23% consumption", "§eNo other changes"))),
                             MapUtil.createEntry("speed", new ModifierConfig(1.18f, 0.82f, 1.00f, Arrays.asList("§aSpeed Boost: §f+18% faster", "§eEnergy: §f+18% consumption"))),
                             MapUtil.createEntry("item", new ModifierConfig(1.70f, 1.00f, 1.90f, Arrays.asList("§bItem Multiplier: §f+90% items", "§eEnergy: §f+70% consumption")))
                     ),
@@ -80,7 +80,7 @@ public class ConfigLoader {
             )),
             MapUtil.createEntry("caerium", new MinerConfig(500000000,500, 550,
                     MapUtil.of(
-                            MapUtil.createEntry("energy", new ModifierConfig(0.75f, 1.00f, 1.00f, Arrays.asList("§6Energy Efficiency: §f-25% consumption", "§eCustomizable tooltip line 2"))),
+                            MapUtil.createEntry("energy", new ModifierConfig(0.75f, 1.00f, 1.00f, Arrays.asList("§6Energy Efficiency: §f-25% consumption", "§eNo other changes"))),
                             MapUtil.createEntry("speed", new ModifierConfig(1.20f, 0.8f, 1.00f, Arrays.asList("§aSpeed Boost: §f+20% faster", "§eEnergy: §f+20% consumption"))),
                             MapUtil.createEntry("item", new ModifierConfig(1.75f, 1.00f, 2.00f, Arrays.asList("§bItem Multiplier: §f+100% items", "§eEnergy: §f+75% consumption")))
                     ),
@@ -88,7 +88,7 @@ public class ConfigLoader {
             )),
             MapUtil.createEntry("amethystine", new MinerConfig(750000000,400, 600,
                     MapUtil.of(
-                            MapUtil.createEntry("energy", new ModifierConfig(0.73f, 1.00f, 1.00f, Arrays.asList("§6Energy Efficiency: §f-27% consumption", "§eCustomizable tooltip line 2"))),
+                            MapUtil.createEntry("energy", new ModifierConfig(0.73f, 1.00f, 1.00f, Arrays.asList("§6Energy Efficiency: §f-27% consumption", "§eNo other changes"))),
                             MapUtil.createEntry("speed", new ModifierConfig(1.22f, 0.78f, 1.00f, Arrays.asList("§aSpeed Boost: §f+22% faster", "§eEnergy: §f+22% consumption"))),
                             MapUtil.createEntry("item", new ModifierConfig(1.80f, 1.00f, 2.10f, Arrays.asList("§bItem Multiplier: §f+110% items", "§eEnergy: §f+80% consumption")))
                     ),
@@ -96,7 +96,7 @@ public class ConfigLoader {
             )),
             MapUtil.createEntry("rosarium", new MinerConfig(1000000000,300, 650,
                     MapUtil.of(
-                            MapUtil.createEntry("energy", new ModifierConfig(0.71f, 1.00f, 1.00f, Arrays.asList("§6Energy Efficiency: §f-29% consumption", "§eCustomizable tooltip line 2"))),
+                            MapUtil.createEntry("energy", new ModifierConfig(0.71f, 1.00f, 1.00f, Arrays.asList("§6Energy Efficiency: §f-29% consumption", "§eNo other changes"))),
                             MapUtil.createEntry("speed", new ModifierConfig(1.24f, 0.76f, 1.00f, Arrays.asList("§aSpeed Boost: §f+24% faster", "§eEnergy: §f+24% consumption"))),
                             MapUtil.createEntry("item", new ModifierConfig(1.85f, 1.00f, 2.20f, Arrays.asList("§bItem Multiplier: §f+120% items", "§eEnergy: §f+85% consumption")))
                     ),
@@ -104,7 +104,7 @@ public class ConfigLoader {
             )),
             MapUtil.createEntry("ultimate", new MinerConfig(2147483647,200, 700,
                     MapUtil.of(
-                            MapUtil.createEntry("energy", new ModifierConfig(0.65f, 1.00f, 1.00f, Arrays.asList("§6Energy Efficiency: §f-35% consumption", "§eCustomizable tooltip line 2"))),
+                            MapUtil.createEntry("energy", new ModifierConfig(0.65f, 1.00f, 1.00f, Arrays.asList("§6Energy Efficiency: §f-35% consumption", "§eNo other changes"))),
                             MapUtil.createEntry("speed", new ModifierConfig(1.30f, 0.7f, 1.00f, Arrays.asList("§aSpeed Boost: §f+30% faster", "§eEnergy: §f+30% consumption"))),
                             MapUtil.createEntry("item", new ModifierConfig(2.00f, 1.00f, 2.50f, Arrays.asList("§bItem Multiplier: §f+150% items", "§eEnergy: §f+100% consumption")))
                     ),
