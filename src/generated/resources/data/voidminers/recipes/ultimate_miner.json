@@ -11,16 +11,13 @@
     "G": {
       "tag": "forge:glass"
     },
-    "O": {
-      "item": "minecraft:obsidian"
-    },
     "R": {
       "item": "voidminers:rosarium_miner"
     }
   },
   "pattern": [
     "GGG",
-    "GCG",
+    "RCR",
     "BRB"
   ],
   "result": {

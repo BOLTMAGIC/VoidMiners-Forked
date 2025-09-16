@@ -2,6 +2,7 @@ package com.leo.voidminers.datagen;
 
 import com.leo.voidminers.VoidMiners;
 import com.leo.voidminers.init.ModBlocks;
+import com.leo.voidminers.init.ModItems;
 import com.leo.voidminers.init.CrystalSet;
 import com.leo.voidminers.init.SolarSet;
 import com.leo.voidminers.recipe.MinerRecipe;
@@ -546,6 +547,38 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
                 .unlockedBy("hasItem", has(ModBlocks.NULL_MOD.get()))
                 .save(pWriter);
         }
+
+        // Ultimate Stellar Core recipe
+        ShapedRecipeBuilder.shaped(
+                RecipeCategory.MISC,
+                ModItems.ULTIMATE_STELLAR_CORE.get(),
+                1
+            )
+            .pattern("ARA")
+            .pattern("RNR")
+            .pattern("RDR")
+            .define('A', CrystalSet.AMETHYSTINE.CRYSTAL.get())
+            .define('R', CrystalSet.ROSARIUM.CRYSTAL.get())
+            .define('N', Items.NETHER_STAR)
+            .define('D', Items.DRAGON_EGG)
+            .unlockedBy("hasItem", has(Items.NETHER_STAR))
+            .save(pWriter);
+
+        // Ultimate Miner recipe
+        ShapedRecipeBuilder.shaped(
+                RecipeCategory.MISC,
+                CrystalSet.ULTIMATE.MINER_CONTROLLER.get(),
+                1
+            )
+            .pattern("GGG")
+            .pattern("RCR")
+            .pattern("BRB")
+            .define('G', Tags.Items.GLASS)
+            .define('C', ModItems.ULTIMATE_STELLAR_CORE.get())
+            .define('R', CrystalSet.ROSARIUM.MINER_CONTROLLER.get())
+            .define('B', CrystalSet.ULTIMATE.CRYSTAL_BLOCK.get())
+            .unlockedBy("hasItem", has(ModItems.ULTIMATE_STELLAR_CORE.get()))
+            .save(pWriter);
     }
 
 }

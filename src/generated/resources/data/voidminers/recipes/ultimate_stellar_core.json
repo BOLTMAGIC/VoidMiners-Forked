@@ -5,20 +5,20 @@
     "A": {
       "item": "voidminers:amethystine"
     },
-    "R": {
-      "item": "voidminers:rosarium"
-    },
-    "S": {
-      "item": "minecraft:nether_star"
-    },
     "D": {
       "item": "minecraft:dragon_egg"
+    },
+    "N": {
+      "item": "minecraft:nether_star"
+    },
+    "R": {
+      "item": "voidminers:rosarium"
     }
   },
   "pattern": [
     "ARA",
-    "RSR",
-    "ADA"
+    "RNR",
+    "RDR"
   ],
   "result": {
     "item": "voidminers:ultimate_stellar_core"
