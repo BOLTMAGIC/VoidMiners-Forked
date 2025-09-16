@@ -1,0 +1,24 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "D": {
+      "item": "minecraft:diamond_block"
+    },
+    "N": {
+      "item": "minecraft:nether_star"
+    },
+    "S": {
+      "item": "voidminers:solar_rosarium_block"
+    }
+  },
+  "pattern": [
+    "SDS",
+    "DND",
+    "SDS"
+  ],
+  "result": {
+    "item": "voidminers:ultimate_stellar_core"
+  },
+  "show_notification": true
+}

@@ -549,6 +549,21 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
             .define('B', CrystalSet.ULTIMATE.CRYSTAL_BLOCK.get())
             .unlockedBy("hasItem", has(Items.NETHER_STAR))
             .save(pWriter);
+
+        // Ultimate Stellar Core recipe
+        ShapedRecipeBuilder.shaped(
+                RecipeCategory.MISC,
+                ModItems.ULTIMATE_STELLAR_CORE.get(),
+                1
+            )
+            .pattern("SDS")
+            .pattern("DND")
+            .pattern("SDS")
+            .define('S', SolarSet.ROSARIUM.SOLAR_CRYSTAL_BLOCK.get())
+            .define('D', Blocks.DIAMOND_BLOCK)
+            .define('N', Items.NETHER_STAR)
+            .unlockedBy("hasItem", has(Items.NETHER_STAR))
+            .save(pWriter);
     }
 
 }
