@@ -68,8 +68,6 @@ public class ModBlockStateProvider extends BlockStateProvider {
             quadLayerBlockWithItem(set.EFFICIENCY_MOD, "voidminers:block/_core/energy", "voidminers:block/_core/modifier", "voidminers:block/_core/cover", "voidminers:block/" + set.name + "/core");
 
             quadLayerBlockWithItem(set.WEATHER_MOD, "voidminers:block/_core/speed", "voidminers:block/_core/modifier", "voidminers:block/_core/cover", "voidminers:block/" + set.name + "/core");
-
-            quadLayerBlockWithItem(set.OUTPUT_MOD, "voidminers:block/_core/item", "voidminers:block/_core/modifier", "voidminers:block/_core/cover", "voidminers:block/" + set.name + "/core");
         }
     }
 

@@ -90,7 +90,6 @@ public class ModLanguageProvider extends LanguageProvider {
             this.add(set.SOLAR_FRAME.get(), "Solar " + cFL(set.name) + " Frame");
             this.add(set.EFFICIENCY_MOD.get(), "Solar " + cFL(set.name) + " Efficiency Modifier");
             this.add(set.WEATHER_MOD.get(), "Solar " + cFL(set.name) + " Weather Modifier");
-            this.add(set.OUTPUT_MOD.get(), "Solar " + cFL(set.name) + " Output Modifier");
         }
     }
 

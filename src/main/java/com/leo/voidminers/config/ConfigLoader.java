@@ -35,11 +35,6 @@ public class ConfigLoader {
     @Expose
     public boolean ALLOW_NO_ENERGY_SOLAR_PANELS = false;
 
-    @Expose
-    public float ROSARIUM_STELLAR_CORE_DROP_CHANCE = 0.05f;
-
-    @Expose
-    public float ULTIMATE_STELLAR_CORE_DROP_CHANCE = 0.1f;
 
     @Expose
     public Map<String, MinerConfig> MINER_CONFIGS = MapUtil.of(
@@ -121,15 +116,13 @@ public class ConfigLoader {
     public Map<String, SolarPanelConfig> SOLAR_PANEL_CONFIGS = MapUtil.of(
         MapUtil.createEntry("rubetine", new SolarPanelConfig(5000000, 100, 20,
             MapUtil.of(
-                MapUtil.createEntry("generation", new SolarModifierConfig(1.15f, 0.9f, 1.0f, Arrays.asList("§aGeneration Boost: §f+15%"))),
-                MapUtil.createEntry("efficiency", new SolarModifierConfig(1.0f, 0.85f, 1.0f, Arrays.asList("§bSpeed Boost: §f+15%"))),
+                MapUtil.createEntry("efficiency", new SolarModifierConfig(1.0f, 0.85f, 1.0f, Arrays.asList("§bEfficiency Boost: §f+15%"))),
                 MapUtil.createEntry("weather_resistance", new SolarModifierConfig(1.0f, 1.0f, 1.17f, Arrays.asList("§9Weather Protection: §f+17%")))
             ),
             Arrays.asList("§6RUBETINE SOLAR PANEL", "§eStored energy: §f0 FE/§65.00 MFE", "§9Capacity: §f5.00 MFE", "§aGeneration: §f20 FE/t")
         )),
         MapUtil.createEntry("aurantium", new SolarPanelConfig(10000000, 80, 40,
             MapUtil.of(
-                MapUtil.createEntry("generation", new SolarModifierConfig(1.18f, 0.88f, 1.0f, Arrays.asList("§aGeneration Boost: §f+18%"))),
                 MapUtil.createEntry("efficiency", new SolarModifierConfig(1.0f, 0.83f, 1.0f, Arrays.asList("§bEfficiency Boost: §f+17%"))),
                 MapUtil.createEntry("weather_resistance", new SolarModifierConfig(1.0f, 1.0f, 1.40f, Arrays.asList("§9Weather Protection: §f+40%")))
             ),
@@ -137,7 +130,6 @@ public class ConfigLoader {
         )),
         MapUtil.createEntry("citrinetine", new SolarPanelConfig(20000000, 60, 80,
             MapUtil.of(
-                MapUtil.createEntry("generation", new SolarModifierConfig(1.21f, 0.86f, 1.0f, Arrays.asList("§aGeneration Boost: §f+21%"))),
                 MapUtil.createEntry("efficiency", new SolarModifierConfig(1.0f, 0.81f, 1.0f, Arrays.asList("§bEfficiency Boost: §f+19%"))),
                 MapUtil.createEntry("weather_resistance", new SolarModifierConfig(1.0f, 1.0f, 1.57f, Arrays.asList("§9Weather Protection: §f+57%")))
             ),
@@ -145,7 +137,6 @@ public class ConfigLoader {
         )),
         MapUtil.createEntry("verdium", new SolarPanelConfig(40000000, 50, 160,
             MapUtil.of(
-                MapUtil.createEntry("generation", new SolarModifierConfig(1.24f, 0.84f, 1.0f, Arrays.asList("§aGeneration Boost: §f+24%"))),
                 MapUtil.createEntry("efficiency", new SolarModifierConfig(1.0f, 0.79f, 1.0f, Arrays.asList("§bEfficiency Boost: §f+21%"))),
                 MapUtil.createEntry("weather_resistance", new SolarModifierConfig(1.0f, 1.0f, 1.80f, Arrays.asList("§9Weather Protection: §f+80%")))
             ),
@@ -153,7 +144,6 @@ public class ConfigLoader {
         )),
         MapUtil.createEntry("azurine", new SolarPanelConfig(80000000, 40, 320,
             MapUtil.of(
-                MapUtil.createEntry("generation", new SolarModifierConfig(1.27f, 0.82f, 1.0f, Arrays.asList("§aGeneration Boost: §f+27%"))),
                 MapUtil.createEntry("efficiency", new SolarModifierConfig(1.0f, 0.77f, 1.0f, Arrays.asList("§bEfficiency Boost: §f+23%"))),
                 MapUtil.createEntry("weather_resistance", new SolarModifierConfig(1.0f, 1.0f, 1.97f, Arrays.asList("§9Weather Protection: §f+97%")))
             ),
@@ -161,7 +151,6 @@ public class ConfigLoader {
         )),
         MapUtil.createEntry("caerium", new SolarPanelConfig(160000000, 30, 640,
             MapUtil.of(
-                MapUtil.createEntry("generation", new SolarModifierConfig(1.3f, 0.8f, 1.0f, Arrays.asList("§aGeneration Boost: §f+30%"))),
                 MapUtil.createEntry("efficiency", new SolarModifierConfig(1.0f, 0.75f, 1.0f, Arrays.asList("§bEfficiency Boost: §f+25%"))),
                 MapUtil.createEntry("weather_resistance", new SolarModifierConfig(1.0f, 1.0f, 2.20f, Arrays.asList("§9Weather Protection: §f+120%")))
             ),
@@ -169,7 +158,6 @@ public class ConfigLoader {
         )),
         MapUtil.createEntry("amethystine", new SolarPanelConfig(320000000, 25, 1280,
             MapUtil.of(
-                MapUtil.createEntry("generation", new SolarModifierConfig(1.33f, 0.78f, 1.0f, Arrays.asList("§aGeneration Boost: §f+33%"))),
                 MapUtil.createEntry("efficiency", new SolarModifierConfig(1.0f, 0.73f, 1.0f, Arrays.asList("§bEfficiency Boost: §f+27%"))),
                 MapUtil.createEntry("weather_resistance", new SolarModifierConfig(1.0f, 1.0f, 2.37f, Arrays.asList("§9Weather Protection: §f+137%")))
             ),
@@ -177,7 +165,6 @@ public class ConfigLoader {
         )),
         MapUtil.createEntry("rosarium", new SolarPanelConfig(640000000, 20, 2560,
             MapUtil.of(
-                MapUtil.createEntry("generation", new SolarModifierConfig(1.36f, 0.76f, 1.0f, Arrays.asList("§aGeneration Boost: §f+36%"))),
                 MapUtil.createEntry("efficiency", new SolarModifierConfig(1.0f, 0.71f, 1.0f, Arrays.asList("§bEfficiency Boost: §f+29%"))),
                 MapUtil.createEntry("weather_resistance", new SolarModifierConfig(1.0f, 1.0f, 2.60f, Arrays.asList("§9Weather Protection: §f+160%")))
             ),
@@ -185,7 +172,6 @@ public class ConfigLoader {
         )),
         MapUtil.createEntry("ultimate", new SolarPanelConfig(2147483647L, 15, 5120,
             MapUtil.of(
-                MapUtil.createEntry("generation", new SolarModifierConfig(1.45f, 0.7f, 1.0f, Arrays.asList("§aGeneration Boost: §f+45%"))),
                 MapUtil.createEntry("efficiency", new SolarModifierConfig(1.0f, 0.65f, 1.0f, Arrays.asList("§bEfficiency Boost: §f+35%"))),
                 MapUtil.createEntry("weather_resistance", new SolarModifierConfig(1.0f, 1.0f, 3.33f, Arrays.asList("§9Weather Protection: §f+233%")))
             ),

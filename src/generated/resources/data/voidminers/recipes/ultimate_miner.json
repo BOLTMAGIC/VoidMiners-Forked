@@ -6,7 +6,7 @@
       "item": "voidminers:ultimate_block"
     },
     "C": {
-      "item": "voidminers:ultimate_stellar_core"
+      "item": "minecraft:nether_star"
     },
     "G": {
       "tag": "forge:glass"

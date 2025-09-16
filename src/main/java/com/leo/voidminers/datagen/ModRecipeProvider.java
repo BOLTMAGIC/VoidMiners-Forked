@@ -532,37 +532,7 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
                 .unlockedBy("hasItem", has(ModBlocks.NULL_MOD.get()))
                 .save(pWriter);
 
-            // Solar output modifier recipes
-            ShapedRecipeBuilder.shaped(
-                    RecipeCategory.MISC,
-                    set.OUTPUT_MOD.get(),
-                    1
-                )
-                .pattern("CcC")
-                .pattern("cMc")
-                .pattern("CcC")
-                .define('C', set.SOLAR_CRYSTAL != null ? set.SOLAR_CRYSTAL.get() : Items.NETHER_STAR)
-                .define('c', Items.COPPER_BLOCK)
-                .define('M', i > 0 ? allSolarSets.get(i - 1).OUTPUT_MOD.get() : ModBlocks.NULL_MOD.get())
-                .unlockedBy("hasItem", has(ModBlocks.NULL_MOD.get()))
-                .save(pWriter);
         }
-
-        // Ultimate Stellar Core recipe
-        ShapedRecipeBuilder.shaped(
-                RecipeCategory.MISC,
-                ModItems.ULTIMATE_STELLAR_CORE.get(),
-                1
-            )
-            .pattern("ARA")
-            .pattern("RNR")
-            .pattern("RDR")
-            .define('A', CrystalSet.AMETHYSTINE.CRYSTAL.get())
-            .define('R', CrystalSet.ROSARIUM.CRYSTAL.get())
-            .define('N', Items.NETHER_STAR)
-            .define('D', Items.DRAGON_EGG)
-            .unlockedBy("hasItem", has(Items.NETHER_STAR))
-            .save(pWriter);
 
         // Ultimate Miner recipe
         ShapedRecipeBuilder.shaped(
@@ -574,10 +544,10 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
             .pattern("RCR")
             .pattern("BRB")
             .define('G', Tags.Items.GLASS)
-            .define('C', ModItems.ULTIMATE_STELLAR_CORE.get())
+            .define('C', Items.NETHER_STAR)
             .define('R', CrystalSet.ROSARIUM.MINER_CONTROLLER.get())
             .define('B', CrystalSet.ULTIMATE.CRYSTAL_BLOCK.get())
-            .unlockedBy("hasItem", has(ModItems.ULTIMATE_STELLAR_CORE.get()))
+            .unlockedBy("hasItem", has(Items.NETHER_STAR))
             .save(pWriter);
     }
 

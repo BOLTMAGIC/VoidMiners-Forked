@@ -32,9 +32,8 @@ public class SolarSet {
     public final RegistryObject<Block> SOLAR_FRAME;
     public final RegistryObject<Block> EFFICIENCY_MOD;
     public final RegistryObject<Block> WEATHER_MOD;
-    public final RegistryObject<Block> OUTPUT_MOD;
 
-    SolarSet(String name, RegistryObject<Item> solarCrystal, RegistryObject<Block> solarCrystalBlock, RegistryObject<Block> solarPanelController, RegistryObject<Block> solarFrame, RegistryObject<Block> efficiencyMod, RegistryObject<Block> weatherMod, RegistryObject<Block> outputMod) {
+    SolarSet(String name, RegistryObject<Item> solarCrystal, RegistryObject<Block> solarCrystalBlock, RegistryObject<Block> solarPanelController, RegistryObject<Block> solarFrame, RegistryObject<Block> efficiencyMod, RegistryObject<Block> weatherMod) {
         this.name = name;
         SOLAR_CRYSTAL = solarCrystal;
         SOLAR_CRYSTAL_BLOCK = solarCrystalBlock;
@@ -42,7 +41,6 @@ public class SolarSet {
         SOLAR_FRAME = solarFrame;
         EFFICIENCY_MOD = efficiencyMod;
         WEATHER_MOD = weatherMod;
-        OUTPUT_MOD = outputMod;
     }
 
     public static RegistryObject<Item> fastCreateSolarItem(String name, Rarity rarity) {
@@ -116,8 +114,7 @@ public class SolarSet {
             fastCreateSolarController(name, 10, 50, rarity, ResourceLocation.fromNamespaceAndPath(VoidMiners.MODID, "solar_" + name)),
             fastCreateSolarFrame(name, 10, 50, rarity),
             fastCreateSolarModifier(name, 10, 50, rarity, SolarModifierType.EFFICIENCY),
-            fastCreateSolarModifier(name, 10, 50, rarity, SolarModifierType.WEATHER),
-            fastCreateSolarModifier(name, 10, 50, rarity, SolarModifierType.OUTPUT)
+            fastCreateSolarModifier(name, 10, 50, rarity, SolarModifierType.WEATHER)
         );
     }
 
@@ -140,7 +137,6 @@ public class SolarSet {
     public enum SolarModifierType {
         EFFICIENCY("efficiency"),
         WEATHER("weather"),
-        OUTPUT("output"),
         NULL("null");
 
         public final String type;
@@ -153,7 +149,6 @@ public class SolarSet {
             return switch (name.toLowerCase()) {
                 case "efficiency" -> EFFICIENCY;
                 case "weather" -> WEATHER;
-                case "output" -> OUTPUT;
                 default -> null;
             };
         }

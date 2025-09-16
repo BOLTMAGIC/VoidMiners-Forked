@@ -100,8 +100,7 @@ public class ModBlockTagGenerator extends BlockTagsProvider {
                     solarSet.SOLAR_CRYSTAL_BLOCK.get(),
                     solarSet.SOLAR_FRAME.get(),
                     solarSet.EFFICIENCY_MOD.get(),
-                    solarSet.WEATHER_MOD.get(),
-                    solarSet.OUTPUT_MOD.get()
+                    solarSet.WEATHER_MOD.get()
                 );
 
             this.tag(BlockTags.NEEDS_STONE_TOOL)
@@ -110,8 +109,7 @@ public class ModBlockTagGenerator extends BlockTagsProvider {
                     solarSet.SOLAR_CRYSTAL_BLOCK.get(),
                     solarSet.SOLAR_FRAME.get(),
                     solarSet.EFFICIENCY_MOD.get(),
-                    solarSet.WEATHER_MOD.get(),
-                    solarSet.OUTPUT_MOD.get()
+                    solarSet.WEATHER_MOD.get()
                 );
 
             // Add solar frames to frame tags
@@ -126,8 +124,7 @@ public class ModBlockTagGenerator extends BlockTagsProvider {
             this.tag(MODIFIERS)
                 .add(
                     solarSet.EFFICIENCY_MOD.get(),
-                    solarSet.WEATHER_MOD.get(),
-                    solarSet.OUTPUT_MOD.get()
+                    solarSet.WEATHER_MOD.get()
                 );
         }
     }
