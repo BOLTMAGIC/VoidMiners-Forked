@@ -75,7 +75,7 @@
   "tooltip.voidminers.energy": "Модификатор энергии: %dx",
   "tooltip.voidminers.item": "Модификатор количества предметов: %dx",
   "tooltip.voidminers.speed": "Модификатор скорости: %dx",
-  "tooltip.voidminers.structure.weight": "Масса: %d",
+  "tooltip.voidminers.structure.weight": "Масса: %s",
   "tooltip.voidminerscreative_only": "Только в творческом режиме",
   "voidminers.itemGroup.items": "Предметы"
 }

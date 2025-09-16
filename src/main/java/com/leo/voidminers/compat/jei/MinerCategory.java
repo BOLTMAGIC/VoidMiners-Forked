@@ -104,8 +104,8 @@ public class MinerCategory implements IRecipeCategory<MinerRecipe> {
             && mouseY <= y2;
     }
 
-    public static String customFormat(float number) {
-        String numberStr = Float.toString(number);
+    public static String customFormat(double number) {
+        String numberStr = Double.toString(number);
         String[] parts = numberStr.split("\\.");
 
         String decimalPart = parts.length > 1 ? parts[1] : "";

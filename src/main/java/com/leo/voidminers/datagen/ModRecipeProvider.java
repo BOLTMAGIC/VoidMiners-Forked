@@ -203,15 +203,15 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
         List<WeightedStack> OVERWORLD = List.of(
                 new WeightedStack(
                         Items.EMERALD_ORE,
-                        1f
+                        1.0
                 ),
                 new WeightedStack(
                         Items.DIAMOND_ORE,
-                        2f
+                        2.0
                 ),
                 new WeightedStack(
                         Items.GOLD_ORE,
-                        4f
+                        4.0
                 ),
                 new WeightedStack(
                         Items.REDSTONE_ORE,
@@ -235,11 +235,11 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
                 ),
                 new WeightedStack(
                         CrystalSet.RUBETINE.CRYSTAL.get(),
-                        2f
+                        2.0
                 ),
                 new WeightedStack(
                         CrystalSet.AURANTIUM.CRYSTAL.get(),
-                        2f
+                        2.0
                 )
         );
 
@@ -266,11 +266,11 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
                 ),
                 new WeightedStack(
                         CrystalSet.RUBETINE.CRYSTAL.get(),
-                        2f
+                        2.0
                 ),
                 new WeightedStack(
                         CrystalSet.AURANTIUM.CRYSTAL.get(),
-                        2f
+                        2.0
                 )
         );
 
@@ -285,7 +285,7 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
         MinerRecipe.Builder.builder(
                 new WeightedStack(
                         CrystalSet.CITRINETINE.CRYSTAL.get(),
-                        2f
+                        2.0
                 ),
                 2,
                 Level.OVERWORLD
@@ -294,7 +294,7 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
         MinerRecipe.Builder.builder(
                 new WeightedStack(
                         CrystalSet.CITRINETINE.CRYSTAL.get(),
-                        4f
+                        4.0
                 ),
                 2,
                 Level.NETHER
@@ -303,7 +303,7 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
         MinerRecipe.Builder.builder(
                 new WeightedStack(
                         CrystalSet.VERDIUM.CRYSTAL.get(),
-                        2f
+                        2.0
                 ),
                 3,
                 Level.OVERWORLD
@@ -312,7 +312,7 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
         MinerRecipe.Builder.builder(
                 new WeightedStack(
                         CrystalSet.VERDIUM.CRYSTAL.get(),
-                        4f
+                        4.0
                 ),
                 3,
                 Level.NETHER
@@ -321,7 +321,7 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
         MinerRecipe.Builder.builder(
                 new WeightedStack(
                         CrystalSet.AZURINE.CRYSTAL.get(),
-                        2f
+                        2.0
                 ),
                 4,
                 Level.OVERWORLD
@@ -330,7 +330,7 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
         MinerRecipe.Builder.builder(
                 new WeightedStack(
                         CrystalSet.AZURINE.CRYSTAL.get(),
-                        4f
+                        4.0
                 ),
                 4,
                 Level.NETHER
@@ -339,7 +339,7 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
         MinerRecipe.Builder.builder(
                 new WeightedStack(
                         CrystalSet.CAERIUM.CRYSTAL.get(),
-                        2f
+                        2.0
                 ),
                 5,
                 Level.OVERWORLD
@@ -348,7 +348,7 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
         MinerRecipe.Builder.builder(
                 new WeightedStack(
                         CrystalSet.CAERIUM.CRYSTAL.get(),
-                        4f
+                        4.0
                 ),
                 5,
                 Level.NETHER
@@ -357,7 +357,7 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
         MinerRecipe.Builder.builder(
                 new WeightedStack(
                         CrystalSet.AMETHYSTINE.CRYSTAL.get(),
-                        2f
+                        2.0
                 ),
                 6,
                 Level.OVERWORLD
@@ -366,7 +366,7 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
         MinerRecipe.Builder.builder(
                 new WeightedStack(
                         CrystalSet.AMETHYSTINE.CRYSTAL.get(),
-                        4f
+                        4.0
                 ),
                 6,
                 Level.NETHER
@@ -375,7 +375,7 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
         MinerRecipe.Builder.builder(
                 new WeightedStack(
                         CrystalSet.ROSARIUM.CRYSTAL.get(),
-                        2f
+                        2.0
                 ),
                 7,
                 Level.OVERWORLD
@@ -384,7 +384,7 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
         MinerRecipe.Builder.builder(
                 new WeightedStack(
                         CrystalSet.ROSARIUM.CRYSTAL.get(),
-                        4f
+                        4.0
                 ),
                 7,
                 Level.NETHER
@@ -554,7 +554,7 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
         MinerRecipe.Builder.builder(
                 new WeightedStack(
                         ModItems.ULTIMATE_STELLAR_CORE.get(),
-                        0.5f  // Very rare drop
+                        0.000005  // Very rare drop
                 ),
                 8,
                 false,// Tier 8 (Rosarium tier)
@@ -564,7 +564,7 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
         MinerRecipe.Builder.builder(
                 new WeightedStack(
                         ModItems.ULTIMATE_STELLAR_CORE.get(),
-                        1f  // Slightly more common in Nether
+                        1.0  // Slightly more common in Nether
                 ),
                 9,
                 false,// Tier 9 (Ultimate tier)

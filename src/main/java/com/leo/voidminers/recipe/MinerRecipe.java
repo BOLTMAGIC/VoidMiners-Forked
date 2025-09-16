@@ -115,7 +115,7 @@ public class MinerRecipe implements Recipe<Container> {
 
             WeightedStack output = new WeightedStack(
                 stack,
-                GsonHelper.getAsFloat(jsonOutput, "weight", 1)
+                GsonHelper.getAsDouble(jsonOutput, "weight", 1.0)
             );
 
             int minTier = GsonHelper.getAsInt(pSerializedRecipe, "minTier");
@@ -136,7 +136,7 @@ public class MinerRecipe implements Recipe<Container> {
         @Override
         public @Nullable MinerRecipe fromNetwork(ResourceLocation pRecipeId, FriendlyByteBuf pBuffer) {
             ItemStack stack = pBuffer.readItem();
-            float weight = pBuffer.readFloat();
+            double weight = pBuffer.readDouble();
 
             WeightedStack output = new WeightedStack(stack, weight);
 
@@ -151,7 +151,7 @@ public class MinerRecipe implements Recipe<Container> {
         @Override
         public void toNetwork(FriendlyByteBuf pBuffer, MinerRecipe pRecipe) {
             pBuffer.writeItem(pRecipe.output.stack);
-            pBuffer.writeFloat(pRecipe.output.weight);
+            pBuffer.writeDouble(pRecipe.output.weight);
 
             pBuffer.writeInt(pRecipe.minTier);
             pBuffer.writeBoolean(pRecipe.allowHigherTiers);

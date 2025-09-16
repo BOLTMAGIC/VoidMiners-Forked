@@ -604,9 +604,9 @@ public class ControllerBaseBE extends BlockEntity {
     }
 
     public ItemStack getWeightedItem(List<WeightedStack> items, RandomSource random) {
-        float totalWeight = ListUtil.getTotalWeight(items);
+        double totalWeight = ListUtil.getTotalWeight(items);
 
-        float randomValue = random.nextFloat() * totalWeight;
+        double randomValue = random.nextDouble() * totalWeight;
 
         for (WeightedStack item : items) {
             randomValue -= item.weight;

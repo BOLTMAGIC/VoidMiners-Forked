@@ -38,7 +38,7 @@ public class ModLanguageProvider extends LanguageProvider {
 
         this.add("tooltip." + VoidMiners.MODID + ".solar_panel.missing_structure", "Solar Panel is not assembled correctly, shift r-click the block for a guide. Total needed blocks: ");
 
-        this.add("tooltip." + VoidMiners.MODID + ".structure.weight", "Weight: %d");
+        this.add("tooltip." + VoidMiners.MODID + ".structure.weight", "Weight: %s");
 
         this.add(ModBlocks.FRAME_BASE.get(), "Frame Base");
 

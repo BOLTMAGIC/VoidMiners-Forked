@@ -6,8 +6,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class ListUtil {
-    public static float getTotalWeight(List<WeightedStack> items) {
-        float totalWeight = 0;
+    public static double getTotalWeight(List<WeightedStack> items) {
+        double totalWeight = 0;
 
         for (WeightedStack item : items) {
             totalWeight += item.weight;
