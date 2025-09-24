@@ -103,7 +103,7 @@ VoidMiners Reforged is fully configurable through `void-miners.json5`:
 
 Ready to harness the infinite potential of the void? Download VoidMiners Reforged and begin your journey from humble Rubetine miners to Ultimate-tier stellar installations!
 
-**Latest Version**: 1.20.1-1.9.18
+**Latest Version**: 1.20.1-1.9.19
 **License**: MIT
 **Author**: MtcLeo05, PsyGuy007-sys
 

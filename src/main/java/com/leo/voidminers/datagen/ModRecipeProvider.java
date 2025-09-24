@@ -228,6 +228,49 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
                 .unlockedBy("hasItem", has(CrystalSet.ROSARIUM.FRAME.get()))
                 .save(pWriter);
 
+        // Ultimate modifier recipes (ultimate set has no standalone crystal item)
+        ShapedRecipeBuilder.shaped(
+                        RecipeCategory.MISC,
+                        CrystalSet.ULTIMATE.SPEED_MOD.get(),
+                        1
+                )
+                .pattern("CcC")
+                .pattern("cMc")
+                .pattern("CcC")
+                .define('C', CrystalSet.ULTIMATE.CRYSTAL_BLOCK.get())
+                .define('c', Items.SUGAR)
+                .define('M', CrystalSet.ROSARIUM.SPEED_MOD.get())
+                .unlockedBy("hasItem", has(CrystalSet.ROSARIUM.SPEED_MOD.get()))
+                .save(pWriter);
+
+        ShapedRecipeBuilder.shaped(
+                        RecipeCategory.MISC,
+                        CrystalSet.ULTIMATE.ENERGY_MOD.get(),
+                        1
+                )
+                .pattern("CcC")
+                .pattern("cMc")
+                .pattern("CcC")
+                .define('C', CrystalSet.ULTIMATE.CRYSTAL_BLOCK.get())
+                .define('c', Items.REDSTONE)
+                .define('M', CrystalSet.ROSARIUM.ENERGY_MOD.get())
+                .unlockedBy("hasItem", has(CrystalSet.ROSARIUM.ENERGY_MOD.get()))
+                .save(pWriter);
+
+        ShapedRecipeBuilder.shaped(
+                        RecipeCategory.MISC,
+                        CrystalSet.ULTIMATE.ITEM_MOD.get(),
+                        1
+                )
+                .pattern("CcC")
+                .pattern("cMc")
+                .pattern("CcC")
+                .define('C', CrystalSet.ULTIMATE.CRYSTAL_BLOCK.get())
+                .define('c', Items.DIAMOND)
+                .define('M', CrystalSet.ROSARIUM.ITEM_MOD.get())
+                .unlockedBy("hasItem", has(CrystalSet.ROSARIUM.ITEM_MOD.get()))
+                .save(pWriter);
+
         List<WeightedStack> OVERWORLD = List.of(
                 new WeightedStack(
                         Items.EMERALD_ORE,

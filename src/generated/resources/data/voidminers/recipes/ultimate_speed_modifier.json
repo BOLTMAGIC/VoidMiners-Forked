@@ -1,0 +1,24 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "C": {
+      "item": "voidminers:ultimate_block"
+    },
+    "M": {
+      "item": "voidminers:rosarium_speed_modifier"
+    },
+    "c": {
+      "item": "minecraft:sugar"
+    }
+  },
+  "pattern": [
+    "CcC",
+    "cMc",
+    "CcC"
+  ],
+  "result": {
+    "item": "voidminers:ultimate_speed_modifier"
+  },
+  "show_notification": true
+}
