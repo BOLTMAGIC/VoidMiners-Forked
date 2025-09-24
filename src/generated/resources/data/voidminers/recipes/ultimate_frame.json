@@ -13,9 +13,9 @@
     }
   },
   "pattern": [
-    "O O",
-    " N ",
-    "OFO"
+    "ONO",
+    "NFN",
+    "ONO"
   ],
   "result": {
     "item": "voidminers:ultimate_frame"
