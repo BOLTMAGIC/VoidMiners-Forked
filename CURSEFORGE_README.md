@@ -32,6 +32,8 @@ Experience a complete progression journey through 9 distinct crystal tiers, each
 - **Massive Storage**: Energy capacities from 10 MFE to over 2.1 GFE
 - **Configurable Speed**: Mining intervals from 1000 ticks (Rubetine) to 200 ticks (Ultimate)
 
+---
+
 ### ☀️ **Solar Panel Systems**
 - **Parallel Progression**: Each crystal tier has corresponding solar technology
 - **Efficient Power Generation**: Generate 20 FE/t to 5,120 FE/t clean energy
@@ -101,7 +103,7 @@ VoidMiners Reforged is fully configurable through `void-miners.json5`:
 
 Ready to harness the infinite potential of the void? Download VoidMiners Reforged and begin your journey from humble Rubetine miners to Ultimate-tier stellar installations!
 
-**Latest Version**: 1.20.1-1.9.17
+**Latest Version**: 1.20.1-1.9.18
 **License**: MIT
 **Author**: MtcLeo05, PsyGuy007-sys
 

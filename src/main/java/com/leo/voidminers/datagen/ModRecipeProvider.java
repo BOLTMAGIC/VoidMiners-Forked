@@ -200,6 +200,34 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
                     .save(pWriter, ResourceLocation.fromNamespaceAndPath(VoidMiners.MODID, set.name + "_crystal_from_block"));
         }
 
+        // Custom ultimate recipes (no standalone crystal item available)
+        ShapedRecipeBuilder.shaped(
+                        RecipeCategory.MISC,
+                        CrystalSet.ULTIMATE.CRYSTAL_BLOCK.get(),
+                        1
+                )
+                .pattern("RRR")
+                .pattern("RNR")
+                .pattern("RRR")
+                .define('R', CrystalSet.ROSARIUM.CRYSTAL_BLOCK.get())
+                .define('N', Items.NETHER_STAR)
+                .unlockedBy("hasItem", has(CrystalSet.ROSARIUM.CRYSTAL_BLOCK.get()))
+                .save(pWriter);
+
+        ShapedRecipeBuilder.shaped(
+                        RecipeCategory.MISC,
+                        CrystalSet.ULTIMATE.FRAME.get(),
+                        1
+                )
+                .pattern("O O")
+                .pattern(" N ")
+                .pattern("OFO")
+                .define('O', CrystalSet.ULTIMATE.CRYSTAL_BLOCK.get())
+                .define('N', Items.NETHER_STAR)
+                .define('F', CrystalSet.ROSARIUM.FRAME.get())
+                .unlockedBy("hasItem", has(CrystalSet.ROSARIUM.FRAME.get()))
+                .save(pWriter);
+
         List<WeightedStack> OVERWORLD = List.of(
                 new WeightedStack(
                         Items.EMERALD_ORE,

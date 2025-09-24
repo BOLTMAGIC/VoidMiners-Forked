@@ -1,0 +1,24 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "F": {
+      "item": "voidminers:rosarium_frame"
+    },
+    "N": {
+      "item": "minecraft:nether_star"
+    },
+    "O": {
+      "item": "voidminers:ultimate_block"
+    }
+  },
+  "pattern": [
+    "O O",
+    " N ",
+    "OFO"
+  ],
+  "result": {
+    "item": "voidminers:ultimate_frame"
+  },
+  "show_notification": true
+}
