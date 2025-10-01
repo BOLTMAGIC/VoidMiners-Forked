@@ -434,15 +434,8 @@ public class ControllerBaseBE extends BlockEntity {
 
         ItemStack output = getBoostedStack(getWeightedItem(allOutputs, level.random));
 
-
-        ItemStack remaining;
-
-        for (int i = 0; i < itemHandler.getSlots(); i++) {
-            if (!isItemValid(output, itemHandler.getStackInSlot(i))) continue;
-            remaining = itemHandler.insertItem(i, output.copy(), false);
-            if (remaining.isEmpty()) break;
-            output = remaining;
-        }
+        // Insert the output, splitting across multiple slots if necessary
+        insertItemStack(output);
 
         progress = 0;
         sync();
@@ -550,14 +543,30 @@ public class ControllerBaseBE extends BlockEntity {
             return true;
         }
 
+        int remainingCount = stack.getCount();
+        int maxStackSize = stack.getMaxStackSize();
+
         for (int i = 0; i < itemHandler.getSlots(); i++) {
-            if (isItemValid(stack, itemHandler.getStackInSlot(i))) {
-                ItemStack remaining = itemHandler.insertItem(i, stack.copy(), true); // simulate = true
-                if (remaining.isEmpty()) {
+            ItemStack slotStack = itemHandler.getStackInSlot(i);
+
+            if (slotStack.isEmpty()) {
+                // Empty slot can hold up to maxStackSize
+                remainingCount -= maxStackSize;
+                if (remainingCount <= 0) {
                     return true;
+                }
+            } else if (slotStack.is(stack.getItem())) {
+                // Slot with same item can hold additional items up to maxStackSize
+                int spaceInSlot = maxStackSize - slotStack.getCount();
+                if (spaceInSlot > 0) {
+                    remainingCount -= spaceInSlot;
+                    if (remainingCount <= 0) {
+                        return true;
+                    }
                 }
             }
         }
+
         return false;
     }
 
@@ -591,6 +600,38 @@ public class ControllerBaseBE extends BlockEntity {
         }
 
         return false;
+    }
+
+    private void insertItemStack(ItemStack stack) {
+        if (stack.isEmpty()) {
+            return;
+        }
+
+        int remainingCount = stack.getCount();
+        int maxStackSize = stack.getMaxStackSize();
+
+        for (int i = 0; i < itemHandler.getSlots(); i++) {
+            if (remainingCount <= 0) {
+                break;
+            }
+
+            ItemStack slotStack = itemHandler.getStackInSlot(i);
+
+            if (slotStack.isEmpty()) {
+                // Insert into empty slot
+                int toInsert = Math.min(remainingCount, maxStackSize);
+                itemHandler.setStackInSlot(i, stack.copyWithCount(toInsert));
+                remainingCount -= toInsert;
+            } else if (slotStack.is(stack.getItem())) {
+                // Add to existing stack
+                int spaceInSlot = maxStackSize - slotStack.getCount();
+                if (spaceInSlot > 0) {
+                    int toInsert = Math.min(remainingCount, spaceInSlot);
+                    slotStack.grow(toInsert);
+                    remainingCount -= toInsert;
+                }
+            }
+        }
     }
 
     public void drops() {
