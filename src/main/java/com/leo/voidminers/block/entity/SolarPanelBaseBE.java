@@ -425,6 +425,9 @@ public class SolarPanelBaseBE extends BlockEntity {
         boolean energyFull = isEnergyHandlerFull();
         working = !energyFull && solarEff > 0;
 
+        // Always push energy to neighbors, even when buffer is full
+        pushEnergyToNeighbors();
+
         if (level != null) {
             level.sendBlockUpdated(getBlockPos(), getBlockState(), getBlockState(), 3);
         }
@@ -438,9 +441,6 @@ public class SolarPanelBaseBE extends BlockEntity {
         if (energyGenerated > 0) {
             energyHandler.addEnergy(energyGenerated);
         }
-
-        // Actively push energy to adjacent blocks/cables
-        pushEnergyToNeighbors();
 
         pLevel.sendBlockUpdated(pPos, pState, pState, 3);
         sync();
