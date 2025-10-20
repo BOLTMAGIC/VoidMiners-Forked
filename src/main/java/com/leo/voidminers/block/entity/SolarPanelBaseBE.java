@@ -69,6 +69,7 @@ public class SolarPanelBaseBE extends BlockEntity {
 
     public boolean active;
     public boolean working;
+    private boolean blockedByDimension = false;
 
     private LazyOptional<ModEnergyStorage> lazyEnergyHandler = LazyOptional.empty();
     private LazyOptional<ItemStackHandler> lazyItemHandler = LazyOptional.empty();
@@ -122,6 +123,24 @@ public class SolarPanelBaseBE extends BlockEntity {
         String tierName = name != null ? name : (structure != null ? structure.getPath().replace("solar_", "") : "unknown");
         long currentEnergy = energyHandler != null ? energyHandler.getLongEnergyStored() : 0;
         long maxEnergy = energyHandler != null ? energyHandler.getLongMaxEnergyStored() : 0;
+
+        if (blockedByDimension) {
+            toRet.add(Component.literal("═══ ").withStyle(net.minecraft.ChatFormatting.GRAY)
+                .append(Component.literal(tierName.toUpperCase() + " SOLAR PANEL").withStyle(getTierColor(tierName)))
+                .append(Component.literal(" ═══").withStyle(net.minecraft.ChatFormatting.GRAY)));
+
+            toRet.add(Component.literal("⚠ STATUS: ").withStyle(net.minecraft.ChatFormatting.GOLD)
+                .append(Component.literal("DISABLED IN THIS DIMENSION").withStyle(net.minecraft.ChatFormatting.RED)));
+
+            String dimensionId = level != null ? level.dimension().location().toString() : "unknown";
+            toRet.add(Component.literal("🌌 DIMENSION: ").withStyle(net.minecraft.ChatFormatting.BLUE)
+                .append(Component.literal(dimensionId).withStyle(net.minecraft.ChatFormatting.GRAY)));
+
+            toRet.add(Component.literal("🛠 CONFIG PATH: ").withStyle(net.minecraft.ChatFormatting.AQUA)
+                .append(Component.literal("config/void-miners.json5 → SOLAR_DIMENSION_SETTINGS").withStyle(net.minecraft.ChatFormatting.WHITE)));
+
+            return toRet;
+        }
 
         if(working) {
             // Header with tier name and status
@@ -257,6 +276,9 @@ public class SolarPanelBaseBE extends BlockEntity {
     }
     
     private net.minecraft.ChatFormatting getTierColor(String tierName) {
+        if (tierName == null) {
+            return net.minecraft.ChatFormatting.WHITE;
+        }
         return switch (tierName.toLowerCase()) {
             case "rubetine" -> net.minecraft.ChatFormatting.RED;
             case "aurantium" -> net.minecraft.ChatFormatting.GOLD;
@@ -309,6 +331,7 @@ public class SolarPanelBaseBE extends BlockEntity {
         data.putBoolean("active", active);
         if (structure != null) data.putString("structure", structure.toString());
         data.putBoolean("showStructure", showStructure);
+        data.putBoolean("blockedByDimension", blockedByDimension);
         pTag.put(VoidMiners.MODID, data);
     }
 
@@ -345,6 +368,10 @@ public class SolarPanelBaseBE extends BlockEntity {
 
         if (data.contains("showStructure")) {
             showStructure = data.getBoolean("showStructure");
+        }
+
+        if (data.contains("blockedByDimension")) {
+            blockedByDimension = data.getBoolean("blockedByDimension");
         }
     }
 
@@ -407,6 +434,27 @@ public class SolarPanelBaseBE extends BlockEntity {
         }
 
         checkStructure(pLevel, pPos);
+
+        boolean dimensionAllowed = this.name == null || ConfigLoader.getInstance().isSolarDimensionAllowed(pLevel.dimension(), this.name);
+        boolean newBlockedState = !dimensionAllowed;
+        if (blockedByDimension != newBlockedState) {
+            blockedByDimension = newBlockedState;
+            if (level != null) {
+                level.sendBlockUpdated(pPos, getBlockState(), getBlockState(), 3);
+            }
+        } else {
+            blockedByDimension = newBlockedState;
+        }
+
+        if (blockedByDimension) {
+            active = false;
+            working = false;
+            pushEnergyToNeighbors();
+            if (level != null) {
+                level.sendBlockUpdated(pPos, getBlockState(), getBlockState(), 3);
+            }
+            return;
+        }
 
         boolean skyView = hasViewOnSky(pPos);
         active = foundStructure && skyView;

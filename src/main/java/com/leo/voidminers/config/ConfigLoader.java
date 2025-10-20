@@ -7,9 +7,11 @@ import com.google.gson.annotations.Expose;
 import com.google.gson.stream.JsonReader;
 import com.leo.voidminers.util.MapUtil;
 import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.pattern.BlockInWorld;
+import net.minecraft.world.level.Level;
 import net.minecraftforge.fml.loading.FMLPaths;
 import net.minecraftforge.registries.ForgeRegistries;
 
@@ -18,6 +20,7 @@ import java.nio.file.Path;
 import java.util.*;
 
 import java.util.Arrays;
+import java.util.Locale;
 
 public class ConfigLoader {
     public static final String CONFIG_FILE = "void-miners.json5";
@@ -35,6 +38,11 @@ public class ConfigLoader {
     @Expose
     public boolean ALLOW_NO_ENERGY_SOLAR_PANELS = false;
 
+    @Expose
+    public DimensionControl MINER_DIMENSION_SETTINGS = new DimensionControl();
+
+    @Expose
+    public DimensionControl SOLAR_DIMENSION_SETTINGS = new DimensionControl();
 
     @Expose
     public Map<String, MinerConfig> MINER_CONFIGS = MapUtil.of(
@@ -227,6 +235,22 @@ public class ConfigLoader {
         return SOLAR_PANEL_CONFIGS.getOrDefault(name, new SolarPanelConfig(0,0, 0, Map.of(), Arrays.asList("§7Default solar panel tooltip")));
     }
 
+    public boolean isMinerDimensionAllowed(ResourceKey<Level> dimension, String tierName) {
+        if (dimension == null) {
+            return true;
+        }
+
+        return MINER_DIMENSION_SETTINGS.isAllowed(tierName, dimension.location().toString());
+    }
+
+    public boolean isSolarDimensionAllowed(ResourceKey<Level> dimension, String tierName) {
+        if (dimension == null) {
+            return true;
+        }
+
+        return SOLAR_DIMENSION_SETTINGS.isAllowed(tierName, dimension.location().toString());
+    }
+
     public ModifierConfig getModifierConfig(String name, String type) {
         return getMinerConfig(name).modifiers.getOrDefault(type, new ModifierConfig(1, 1, 1, Arrays.asList("§7Default tooltip")));
     }
@@ -360,6 +384,141 @@ public class ConfigLoader {
                     buf.writeUtf(line);
                 }
             }
+        }
+    }
+
+    private static boolean matchesAny(List<String> patterns, String dimensionId) {
+        if (patterns == null || patterns.isEmpty()) {
+            return false;
+        }
+
+        for (String pattern : patterns) {
+            if (matchesDimensionPattern(pattern, dimensionId)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static boolean matchesDimensionPattern(String pattern, String dimensionId) {
+        if (pattern == null || pattern.isBlank()) {
+            return false;
+        }
+
+        String trimmed = pattern.trim();
+        if (trimmed.equals("*")) {
+            return true;
+        }
+
+        if (trimmed.endsWith("*")) {
+            String prefix = trimmed.substring(0, trimmed.length() - 1);
+            return dimensionId.startsWith(prefix);
+        }
+
+        return dimensionId.equalsIgnoreCase(trimmed);
+    }
+
+    public static class DimensionControl {
+        @Expose
+        public boolean enabled = false;
+
+        @Expose
+        public boolean defaultAllow = true;
+
+        @Expose
+        public List<String> globalAllow = new ArrayList<>();
+
+        @Expose
+        public List<String> globalBlock = new ArrayList<>();
+
+        @Expose
+        public Map<String, DimensionRule> tierRules = new HashMap<>();
+
+        public boolean isAllowed(String tierName, String dimensionId) {
+            if (!enabled) {
+                return true;
+            }
+
+            // Tier-specific rules take priority
+            DimensionRule tierRule = resolveTierRule(tierName);
+            if (tierRule != null) {
+                if (tierRule.matchesBlocked(dimensionId)) {
+                    return false;
+                }
+
+                if (tierRule.hasAllowed()) {
+                    return tierRule.matchesAllowed(dimensionId);
+                }
+
+                Boolean tierDefault = tierRule.defaultAllow;
+                if (tierDefault != null) {
+                    return tierDefault;
+                }
+            }
+
+            // Then apply global rules
+            if (matchesAny(globalBlock, dimensionId)) {
+                return false;
+            }
+
+            if (globalAllow != null && !globalAllow.isEmpty()) {
+                return matchesAny(globalAllow, dimensionId);
+            }
+
+            return defaultAllow;
+        }
+
+        private DimensionRule resolveTierRule(String tierName) {
+            if (tierRules == null || tierRules.isEmpty()) {
+                return null;
+            }
+
+            if (tierName == null || tierName.isBlank()) {
+                return tierRules.getOrDefault("*", null);
+            }
+
+            DimensionRule direct = tierRules.get(tierName);
+            if (direct != null) {
+                return direct;
+            }
+
+            String lower = tierName.toLowerCase(Locale.ROOT);
+            DimensionRule lowerRule = tierRules.get(lower);
+            if (lowerRule != null) {
+                return lowerRule;
+            }
+
+            for (Map.Entry<String, DimensionRule> entry : tierRules.entrySet()) {
+                if (entry.getKey().equalsIgnoreCase(tierName)) {
+                    return entry.getValue();
+                }
+            }
+
+            return tierRules.getOrDefault("*", null);
+        }
+    }
+
+    public static class DimensionRule {
+        @Expose
+        public Boolean defaultAllow;
+
+        @Expose
+        public List<String> allowed = new ArrayList<>();
+
+        @Expose
+        public List<String> blocked = new ArrayList<>();
+
+        private boolean matchesAllowed(String dimensionId) {
+            return matchesAny(allowed, dimensionId);
+        }
+
+        private boolean matchesBlocked(String dimensionId) {
+            return matchesAny(blocked, dimensionId);
+        }
+
+        private boolean hasAllowed() {
+            return allowed != null && !allowed.isEmpty();
         }
     }
 

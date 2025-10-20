@@ -73,6 +73,17 @@ public class ControllerBaseBE extends BlockEntity {
 
     private boolean canProduceCache = true;
     private boolean inventoryChanged = true;
+    private boolean blockedByDimension = false;
+    private boolean lastInventoryFull = false;
+    private boolean lastEnergyInsufficient = false;
+    private boolean lastEnergyDemandTooHigh = false;
+    private boolean lastOutputBlocked = false;
+    private int lastEnergyDemand = 0;
+    private long lastEnergyStored = 0;
+    private long lastEnergyCapacity = 0;
+    private int lastRecipeCount = 0;
+    private ItemStack lastBlockedStack = ItemStack.EMPTY;
+    private OutputBlockReason lastOutputBlockReason = OutputBlockReason.NONE;
 
     private LazyOptional<ModEnergyStorage> lazyEnergyHandler = LazyOptional.empty();
     private LazyOptional<ItemStackHandler> lazyItemHandler = LazyOptional.empty();
@@ -105,6 +116,31 @@ public class ControllerBaseBE extends BlockEntity {
 
     public List<Component> getInteractionTooltip() {
         List<Component> toRet = new ArrayList<>();
+
+        if (blockedByDimension) {
+            String headerName = name != null ? name.toUpperCase() + " MINER" : "VOID MINER";
+            toRet.add(Component.literal("═══ ").withStyle(net.minecraft.ChatFormatting.GRAY)
+                .append(Component.literal(headerName).withStyle(getTierColor()))
+                .append(Component.literal(" ═══").withStyle(net.minecraft.ChatFormatting.GRAY)));
+
+            toRet.add(Component.literal("⚠ STATUS: ").withStyle(net.minecraft.ChatFormatting.GOLD)
+                .append(Component.literal("DISABLED IN THIS DIMENSION").withStyle(net.minecraft.ChatFormatting.RED)));
+
+            String dimensionId = level != null ? level.dimension().location().toString() : "unknown";
+            toRet.add(Component.literal("🌌 DIMENSION: ").withStyle(net.minecraft.ChatFormatting.BLUE)
+                .append(Component.literal(dimensionId).withStyle(net.minecraft.ChatFormatting.GRAY)));
+
+            toRet.add(Component.literal("🛠 CONFIG PATH: ").withStyle(net.minecraft.ChatFormatting.AQUA)
+                .append(Component.literal("config/void-miners.json5 → MINER_DIMENSION_SETTINGS").withStyle(net.minecraft.ChatFormatting.WHITE)));
+
+            return toRet;
+        }
+
+        if (name == null) {
+            toRet.add(Component.literal("❓ STATUS: ").withStyle(net.minecraft.ChatFormatting.YELLOW)
+                .append(Component.literal("Miner tier not initialized").withStyle(net.minecraft.ChatFormatting.GRAY)));
+            return toRet;
+        }
         
         // Get base config values
         int baseEnergyTick = ConfigLoader.getInstance().getMinerConfig(name).energyTick();
@@ -175,16 +211,62 @@ public class ControllerBaseBE extends BlockEntity {
             toRet.add(Component.literal("⚠ STATUS: ").withStyle(net.minecraft.ChatFormatting.GOLD)
                 .append(Component.literal("NOT WORKING").withStyle(net.minecraft.ChatFormatting.RED)));
             
-            toRet.add(Component.literal("❌ ISSUE: ").withStyle(net.minecraft.ChatFormatting.RED)
-                .append(Component.literal("Inventory full or insufficient energy").withStyle(net.minecraft.ChatFormatting.GRAY)));
-            
             toRet.add(Component.literal("⚡ ENERGY: ").withStyle(net.minecraft.ChatFormatting.YELLOW)
-                .append(Component.literal(String.format("%,d", currentEnergy)).withStyle(net.minecraft.ChatFormatting.WHITE))
+                .append(Component.literal(String.format("%,d", lastEnergyStored)).withStyle(net.minecraft.ChatFormatting.WHITE))
                 .append(Component.literal(" / ").withStyle(net.minecraft.ChatFormatting.GRAY))
-                .append(Component.literal(String.format("%,d RF", energyStorage)).withStyle(net.minecraft.ChatFormatting.WHITE)));
-            
-            toRet.add(Component.literal("⚡ REQUIRED: ").withStyle(net.minecraft.ChatFormatting.RED)
-                .append(Component.literal(String.format("%,d RF/tick", getRfTick())).withStyle(net.minecraft.ChatFormatting.WHITE)));
+                .append(Component.literal(String.format("%,d RF", lastEnergyCapacity)).withStyle(net.minecraft.ChatFormatting.WHITE)));
+
+            toRet.add(Component.literal("⚡ DEMAND: ").withStyle(net.minecraft.ChatFormatting.RED)
+                .append(Component.literal(String.format("%,d RF/tick", lastEnergyDemand)).withStyle(net.minecraft.ChatFormatting.WHITE))
+                .append(getModifierText(" (", energyMod, baseEnergyTick, "×)", net.minecraft.ChatFormatting.AQUA)));
+
+            toRet.add(Component.literal("📊 MODIFIERS: ").withStyle(net.minecraft.ChatFormatting.AQUA)
+                .append(Component.literal(String.format("%d installed", modifierMap.size())).withStyle(net.minecraft.ChatFormatting.WHITE))
+                .append(Component.literal(" → energy ").withStyle(net.minecraft.ChatFormatting.GRAY))
+                .append(Component.literal(String.format("%.2f×", energyMod)).withStyle(net.minecraft.ChatFormatting.RED))
+                .append(Component.literal(" | speed ").withStyle(net.minecraft.ChatFormatting.GRAY))
+                .append(Component.literal(String.format("%.2f×", speedMod)).withStyle(net.minecraft.ChatFormatting.BLUE))
+                .append(Component.literal(" | items ").withStyle(net.minecraft.ChatFormatting.GRAY))
+                .append(Component.literal(String.format("%.2f×", itemMod)).withStyle(net.minecraft.ChatFormatting.LIGHT_PURPLE)));
+
+            if (lastEnergyDemandTooHigh) {
+                toRet.add(Component.literal("❌ ENERGY LIMIT: ").withStyle(net.minecraft.ChatFormatting.RED)
+                    .append(Component.literal("Required RF/tick exceeds the miner's internal buffer. Remove some item/speed modifiers or add energy modifiers.").withStyle(net.minecraft.ChatFormatting.GRAY)));
+            }
+
+            if (lastEnergyInsufficient && !lastEnergyDemandTooHigh) {
+                long deficit = Math.max(0L, (long) lastEnergyDemand - lastEnergyStored);
+                toRet.add(Component.literal("⚡ DEFICIT: ").withStyle(net.minecraft.ChatFormatting.YELLOW)
+                    .append(Component.literal(String.format("Missing %,d RF to start the next cycle", deficit)).withStyle(net.minecraft.ChatFormatting.GRAY)));
+            }
+
+            if (lastInventoryFull) {
+                toRet.add(Component.literal("📦 OUTPUT: ").withStyle(net.minecraft.ChatFormatting.YELLOW)
+                    .append(Component.literal("All slots are at capacity. Extract items or upgrade storage.").withStyle(net.minecraft.ChatFormatting.GRAY)));
+            }
+
+            if (lastOutputBlocked) {
+                if (lastOutputBlockReason == OutputBlockReason.NO_RECIPES) {
+                    String dimensionName = level != null ? level.dimension().location().toString() : "unknown";
+                    toRet.add(Component.literal("📜 RECIPES: ").withStyle(net.minecraft.ChatFormatting.YELLOW)
+                        .append(Component.literal("No valid miner recipes for this tier in ").withStyle(net.minecraft.ChatFormatting.GRAY))
+                        .append(Component.literal(dimensionName).withStyle(net.minecraft.ChatFormatting.WHITE))
+                        .append(Component.literal(String.format(" (detected %,d)", lastRecipeCount)).withStyle(net.minecraft.ChatFormatting.GRAY)));
+                } else if (!lastBlockedStack.isEmpty()) {
+                    toRet.add(Component.literal("📦 BLOCKED ITEM: ").withStyle(net.minecraft.ChatFormatting.YELLOW)
+                        .append(lastBlockedStack.getHoverName().copy().withStyle(net.minecraft.ChatFormatting.WHITE))
+                        .append(Component.literal(String.format(" × %,d", lastBlockedStack.getCount())).withStyle(net.minecraft.ChatFormatting.WHITE))
+                        .append(Component.literal(" cannot fit in the output inventory.").withStyle(net.minecraft.ChatFormatting.GRAY)));
+                } else {
+                    toRet.add(Component.literal("📦 OUTPUT: ").withStyle(net.minecraft.ChatFormatting.YELLOW)
+                        .append(Component.literal("No slot can accept the next output. Clear space or provide matching stacks.").withStyle(net.minecraft.ChatFormatting.GRAY)));
+                }
+            }
+
+            if (!lastEnergyDemandTooHigh && !lastEnergyInsufficient && !lastInventoryFull && !lastOutputBlocked) {
+                toRet.add(Component.literal("ℹ DIAGNOSTIC: ").withStyle(net.minecraft.ChatFormatting.BLUE)
+                    .append(Component.literal("Awaiting next energy sync. If the issue persists, check external power supply.").withStyle(net.minecraft.ChatFormatting.GRAY)));
+            }
             
             return toRet;
         }
@@ -229,6 +311,9 @@ public class ControllerBaseBE extends BlockEntity {
     }
     
     private net.minecraft.ChatFormatting getTierColor() {
+        if (name == null) {
+            return net.minecraft.ChatFormatting.WHITE;
+        }
         return switch (name.toLowerCase()) {
             case "rubetine" -> net.minecraft.ChatFormatting.RED;
             case "aurantium" -> net.minecraft.ChatFormatting.GOLD;
@@ -302,7 +387,20 @@ public class ControllerBaseBE extends BlockEntity {
         if (structure != null) data.putString("structure", structure.toString());
         data.putBoolean("showStructure", showStructure);
         data.putBoolean("canProduceCache", canProduceCache);
+        data.putBoolean("blockedByDimension", blockedByDimension);
         data.putBoolean("inventoryChanged", inventoryChanged);
+        data.putBoolean("lastInventoryFull", lastInventoryFull);
+        data.putBoolean("lastEnergyInsufficient", lastEnergyInsufficient);
+        data.putBoolean("lastEnergyDemandTooHigh", lastEnergyDemandTooHigh);
+        data.putBoolean("lastOutputBlocked", lastOutputBlocked);
+        data.putInt("lastEnergyDemand", lastEnergyDemand);
+        data.putLong("lastEnergyStored", lastEnergyStored);
+        data.putLong("lastEnergyCapacity", lastEnergyCapacity);
+        data.putInt("lastRecipeCount", lastRecipeCount);
+        data.putInt("lastOutputBlockReason", lastOutputBlockReason.ordinal());
+        if (!lastBlockedStack.isEmpty()) {
+            data.put("lastBlockedStack", lastBlockedStack.save(new CompoundTag()));
+        }
         pTag.put(VoidMiners.MODID, data);
     }
 
@@ -345,8 +443,61 @@ public class ControllerBaseBE extends BlockEntity {
             canProduceCache = data.getBoolean("canProduceCache");
         }
 
+        if (data.contains("blockedByDimension")) {
+            blockedByDimension = data.getBoolean("blockedByDimension");
+        }
+
         if (data.contains("inventoryChanged")) {
             inventoryChanged = data.getBoolean("inventoryChanged");
+        }
+
+        if (data.contains("lastInventoryFull")) {
+            lastInventoryFull = data.getBoolean("lastInventoryFull");
+        }
+
+        if (data.contains("lastEnergyInsufficient")) {
+            lastEnergyInsufficient = data.getBoolean("lastEnergyInsufficient");
+        }
+
+        if (data.contains("lastEnergyDemandTooHigh")) {
+            lastEnergyDemandTooHigh = data.getBoolean("lastEnergyDemandTooHigh");
+        }
+
+        if (data.contains("lastOutputBlocked")) {
+            lastOutputBlocked = data.getBoolean("lastOutputBlocked");
+        }
+
+        if (data.contains("lastEnergyDemand")) {
+            lastEnergyDemand = data.getInt("lastEnergyDemand");
+        }
+
+        if (data.contains("lastEnergyStored")) {
+            lastEnergyStored = data.getLong("lastEnergyStored");
+        }
+
+        if (data.contains("lastEnergyCapacity")) {
+            lastEnergyCapacity = data.getLong("lastEnergyCapacity");
+        }
+
+        if (data.contains("lastRecipeCount")) {
+            lastRecipeCount = data.getInt("lastRecipeCount");
+        }
+
+        if (data.contains("lastOutputBlockReason")) {
+            int ordinal = data.getInt("lastOutputBlockReason");
+            if (ordinal >= 0 && ordinal < OutputBlockReason.values().length) {
+                lastOutputBlockReason = OutputBlockReason.values()[ordinal];
+            } else {
+                lastOutputBlockReason = OutputBlockReason.NONE;
+            }
+        } else {
+            lastOutputBlockReason = OutputBlockReason.NONE;
+        }
+
+        if (data.contains("lastBlockedStack")) {
+            lastBlockedStack = ItemStack.of(data.getCompound("lastBlockedStack"));
+        } else {
+            lastBlockedStack = ItemStack.EMPTY;
         }
     }
 
@@ -404,20 +555,62 @@ public class ControllerBaseBE extends BlockEntity {
 
         checkStructure(pLevel, pPos);
 
+        boolean dimensionAllowed = name == null || ConfigLoader.getInstance().isMinerDimensionAllowed(pLevel.dimension(), name);
+        boolean newBlockedState = !dimensionAllowed;
+        if (blockedByDimension != newBlockedState) {
+            blockedByDimension = newBlockedState;
+            level.sendBlockUpdated(pPos, getBlockState(), getBlockState(), 3);
+        } else {
+            blockedByDimension = newBlockedState;
+        }
+
+        if (blockedByDimension) {
+            active = false;
+            working = false;
+            level.sendBlockUpdated(pPos, getBlockState(), getBlockState(), 3);
+            return;
+        }
+
         active = foundStructure && hasViewOnBedrockOrVoid(pPos);
         level.sendBlockUpdated(pPos, getBlockState(), getBlockState(), 3);
 
-        if(!active) return;
+        if(!active) {
+            working = false;
+            lastInventoryFull = false;
+            lastOutputBlocked = false;
+            lastEnergyDemandTooHigh = false;
+            lastEnergyInsufficient = false;
+            return;
+        }
 
-        working = !isItemHandlerFull() && getRfTick() <= energyHandler.getEnergyStored() && canProduceItems();
+        int energyDemand = getRfTick();
+        long energyStored = energyHandler.getLongEnergyStored();
+        long energyCapacity = energyHandler.getLongMaxEnergyStored();
+
+        lastEnergyDemand = energyDemand;
+        lastEnergyStored = energyStored;
+        lastEnergyCapacity = energyCapacity;
+        lastInventoryFull = isItemHandlerFull();
+
+        boolean canOutput = canProduceItems();
+        lastOutputBlocked = !canOutput;
+
+        lastEnergyDemandTooHigh = energyDemand > energyCapacity;
+        lastEnergyInsufficient = !lastEnergyDemandTooHigh && energyDemand > energyStored;
+
+        working = !lastInventoryFull && !lastOutputBlocked && !lastEnergyDemandTooHigh && !lastEnergyInsufficient;
         level.sendBlockUpdated(getBlockPos(), getBlockState(), getBlockState(), 3);
 
         if (!working) {
+            if (lastEnergyDemandTooHigh) {
+                progress = 0;
+            }
             return;
         }
 
         progress++;
-        energyHandler.removeEnergy(getRfTick());
+        energyHandler.removeEnergy(energyDemand);
+        lastEnergyStored = energyHandler.getLongEnergyStored();
 
         pLevel.sendBlockUpdated(pPos, pState, pState, 3);
         sync();
@@ -577,6 +770,7 @@ public class ControllerBaseBE extends BlockEntity {
             inventoryChanged = false;
         }
 
+        lastOutputBlocked = !canProduceCache;
         return canProduceCache;
     }
 
@@ -587,7 +781,11 @@ public class ControllerBaseBE extends BlockEntity {
             allOutputs.add(recipe.output().copy());
         }
 
+        lastRecipeCount = allOutputs.size();
+        lastBlockedStack = ItemStack.EMPTY;
+
         if (allOutputs.isEmpty()) {
+            lastOutputBlockReason = OutputBlockReason.NO_RECIPES;
             return false;
         }
 
@@ -595,10 +793,15 @@ public class ControllerBaseBE extends BlockEntity {
         for (WeightedStack weightedStack : allOutputs) {
             ItemStack output = getBoostedStack(weightedStack.stack.copy());
             if (canInsertItem(output)) {
+                lastOutputBlockReason = OutputBlockReason.NONE;
+                lastBlockedStack = ItemStack.EMPTY;
                 return true;
+            } else if (lastBlockedStack.isEmpty()) {
+                lastBlockedStack = output.copy();
             }
         }
 
+        lastOutputBlockReason = OutputBlockReason.NO_VALID_SLOT;
         return false;
     }
 
@@ -680,6 +883,12 @@ public class ControllerBaseBE extends BlockEntity {
                 modifierMap.put(block, modifier);
             }
         });
+    }
+
+    private enum OutputBlockReason {
+        NONE,
+        NO_RECIPES,
+        NO_VALID_SLOT
     }
 
     @Override
