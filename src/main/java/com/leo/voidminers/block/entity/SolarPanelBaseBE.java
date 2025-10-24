@@ -5,7 +5,7 @@ import com.leo.voidminers.block.ModifierBlock;
 import com.leo.voidminers.config.ConfigLoader;
 import com.leo.voidminers.energy.ModEnergyStorage;
 import com.leo.voidminers.init.ModBlockEntities;
-import com.leo.voidminers.multiblock.SolarPanelMultiblocks;
+import com.leo.voidminers.multiblock.solar.SolarPanelMultiblocks;
 import com.leo.voidminers.util.MiscUtil;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -67,9 +67,7 @@ public class SolarPanelBaseBE extends BlockEntity {
     private ResourceLocation structure;
     private String name;
 
-    public boolean active;
-    public boolean working;
-    private boolean blockedByDimension = false;
+    private final SolarPanelRuntimeState runtimeState = new SolarPanelRuntimeState();
 
     private LazyOptional<ModEnergyStorage> lazyEnergyHandler = LazyOptional.empty();
     private LazyOptional<ItemStackHandler> lazyItemHandler = LazyOptional.empty();
@@ -121,8 +119,13 @@ public class SolarPanelBaseBE extends BlockEntity {
 
         // Get tier name from structure path (solar_rubetine -> rubetine)
         String tierName = name != null ? name : (structure != null ? structure.getPath().replace("solar_", "") : "unknown");
-        long currentEnergy = energyHandler != null ? energyHandler.getLongEnergyStored() : 0;
-        long maxEnergy = energyHandler != null ? energyHandler.getLongMaxEnergyStored() : 0;
+        long currentEnergy = energyHandler != null ? energyHandler.getLongEnergyStored() : runtimeState.lastEnergyStored();
+        long maxEnergy = energyHandler != null ? energyHandler.getLongMaxEnergyStored() : runtimeState.lastEnergyCapacity();
+        boolean blockedByDimension = runtimeState.isBlockedByDimension();
+        boolean working = runtimeState.isWorking();
+        boolean active = runtimeState.isActive();
+        float efficiency = runtimeState.lastEfficiency() > 0 ? runtimeState.lastEfficiency() : getSolarEfficiency();
+        long generation = runtimeState.lastGeneration() > 0 ? runtimeState.lastGeneration() : getRfTick();
 
         if (blockedByDimension) {
             toRet.add(Component.literal("═══ ").withStyle(net.minecraft.ChatFormatting.GRAY)
@@ -162,11 +165,11 @@ public class SolarPanelBaseBE extends BlockEntity {
             
             // Generation info
             toRet.add(Component.literal("⚡ GENERATION: ").withStyle(net.minecraft.ChatFormatting.GREEN)
-                .append(Component.literal(String.format("%,d RF/tick", getRfTick())).withStyle(net.minecraft.ChatFormatting.WHITE)));
-            
+                .append(Component.literal(String.format("%,d RF/tick", generation)).withStyle(net.minecraft.ChatFormatting.WHITE)));
+
             // Solar efficiency
             toRet.add(Component.literal("☀ EFFICIENCY: ").withStyle(net.minecraft.ChatFormatting.YELLOW)
-                .append(Component.literal(String.format("%.1f%%", getSolarEfficiency())).withStyle(net.minecraft.ChatFormatting.WHITE)));
+                .append(Component.literal(String.format("%.1f%%", efficiency)).withStyle(net.minecraft.ChatFormatting.WHITE)));
 
 
             return toRet;
@@ -185,8 +188,11 @@ public class SolarPanelBaseBE extends BlockEntity {
             if (isEnergyHandlerFull()) {
                 reason = "Energy storage full";
             } else {
-                float efficiency = getSolarEfficiency();
-                if (efficiency <= 0) {
+                float currentEfficiency = efficiency;
+                if (currentEfficiency <= 0) {
+                    currentEfficiency = getSolarEfficiency();
+                }
+                if (currentEfficiency <= 0) {
                     long timeOfDay = level.getDayTime() % 24000;
                     if (timeOfDay >= 12000) {
                         reason = "Night time (wait for day)";
@@ -208,8 +214,9 @@ public class SolarPanelBaseBE extends BlockEntity {
                 .append(Component.literal(" / ").withStyle(net.minecraft.ChatFormatting.GRAY))
                 .append(Component.literal(String.format("%,d RF", maxEnergy)).withStyle(net.minecraft.ChatFormatting.WHITE)));
 
+            float potentialEfficiency = efficiency > 0 ? efficiency : getSolarEfficiency();
             toRet.add(Component.literal("⚡ POTENTIAL: ").withStyle(net.minecraft.ChatFormatting.BLUE)
-                .append(Component.literal(String.format("%,d RF/tick", getRfTick())).withStyle(net.minecraft.ChatFormatting.WHITE)));
+                .append(Component.literal(String.format("%,d RF/tick", computeGenerationFromEfficiency(potentialEfficiency))).withStyle(net.minecraft.ChatFormatting.WHITE)));
 
             return toRet;
         }
@@ -328,10 +335,12 @@ public class SolarPanelBaseBE extends BlockEntity {
         data.put("items", itemHandler.serializeNBT());
         data.putInt("progress", this.progress);
         if (name != null) data.putString("name", this.name);
-        data.putBoolean("active", active);
         if (structure != null) data.putString("structure", structure.toString());
         data.putBoolean("showStructure", showStructure);
-        data.putBoolean("blockedByDimension", blockedByDimension);
+
+        CompoundTag runtimeTag = new CompoundTag();
+        runtimeState.saveTo(runtimeTag);
+        data.put("runtimeState", runtimeTag);
         pTag.put(VoidMiners.MODID, data);
     }
 
@@ -358,10 +367,6 @@ public class SolarPanelBaseBE extends BlockEntity {
             name = data.getString("name");
         }
 
-        if (data.contains("active")) {
-            active = data.getBoolean("active");
-        }
-
         if (data.contains("structure")) {
             structure = ResourceLocation.parse(data.getString("structure"));
         }
@@ -370,8 +375,8 @@ public class SolarPanelBaseBE extends BlockEntity {
             showStructure = data.getBoolean("showStructure");
         }
 
-        if (data.contains("blockedByDimension")) {
-            blockedByDimension = data.getBoolean("blockedByDimension");
+        if (data.contains("runtimeState")) {
+            runtimeState.loadFrom(data.getCompound("runtimeState"));
         }
     }
 
@@ -429,26 +434,25 @@ public class SolarPanelBaseBE extends BlockEntity {
     }
 
     public void tick(Level pLevel, BlockPos pPos, BlockState pState, ResourceLocation structure, String name) {
-        if(getStructure() == null || this.name == null) {
+        if (getStructure() == null || this.name == null) {
             setup(structure, name);
         }
 
         checkStructure(pLevel, pPos);
 
         boolean dimensionAllowed = this.name == null || ConfigLoader.getInstance().isSolarDimensionAllowed(pLevel.dimension(), this.name);
-        boolean newBlockedState = !dimensionAllowed;
-        if (blockedByDimension != newBlockedState) {
-            blockedByDimension = newBlockedState;
-            if (level != null) {
-                level.sendBlockUpdated(pPos, getBlockState(), getBlockState(), 3);
-            }
-        } else {
-            blockedByDimension = newBlockedState;
+        boolean blockedChanged = runtimeState.updateBlockedByDimension(!dimensionAllowed);
+        if (blockedChanged && level != null) {
+            level.sendBlockUpdated(pPos, getBlockState(), getBlockState(), 3);
         }
 
-        if (blockedByDimension) {
-            active = false;
-            working = false;
+        if (runtimeState.isBlockedByDimension()) {
+            runtimeState.setActive(false);
+            runtimeState.setWorking(false);
+            runtimeState.setHasSkyView(false);
+            runtimeState.setLastGeneration(0);
+            runtimeState.setLastEfficiency(0);
+            runtimeState.updateEnergySnapshot(energyHandler.getLongEnergyStored(), energyHandler.getLongMaxEnergyStored());
             pushEnergyToNeighbors();
             if (level != null) {
                 level.sendBlockUpdated(pPos, getBlockState(), getBlockState(), 3);
@@ -457,38 +461,49 @@ public class SolarPanelBaseBE extends BlockEntity {
         }
 
         boolean skyView = hasViewOnSky(pPos);
-        active = foundStructure && skyView;
-
+        runtimeState.setHasSkyView(skyView);
+        boolean active = foundStructure && skyView;
+        runtimeState.setActive(active);
 
         if (level != null) {
             level.sendBlockUpdated(pPos, getBlockState(), getBlockState(), 3);
         }
 
-        if(!active) {
-            working = false;
+        if (!active) {
+            runtimeState.setWorking(false);
+            runtimeState.setLastGeneration(0);
+            runtimeState.setLastEfficiency(0);
+            runtimeState.updateEnergySnapshot(energyHandler.getLongEnergyStored(), energyHandler.getLongMaxEnergyStored());
             return;
         }
 
         float solarEff = getSolarEfficiency();
+        runtimeState.setLastEfficiency(solarEff);
         boolean energyFull = isEnergyHandlerFull();
-        working = !energyFull && solarEff > 0;
+        boolean working = !energyFull && solarEff > 0;
+        runtimeState.setWorking(working);
 
         // Always push energy to neighbors, even when buffer is full
         pushEnergyToNeighbors();
+        runtimeState.updateEnergySnapshot(energyHandler.getLongEnergyStored(), energyHandler.getLongMaxEnergyStored());
 
         if (level != null) {
             level.sendBlockUpdated(getBlockPos(), getBlockState(), getBlockState(), 3);
         }
 
         if (!working) {
+            runtimeState.setLastGeneration(0);
             return;
         }
 
         progress++;
-        long energyGenerated = getRfTick();
+        long energyGenerated = computeGenerationFromEfficiency(solarEff);
+        runtimeState.setLastGeneration(energyGenerated);
         if (energyGenerated > 0) {
             energyHandler.addEnergy(energyGenerated);
         }
+
+        runtimeState.updateEnergySnapshot(energyHandler.getLongEnergyStored(), energyHandler.getLongMaxEnergyStored());
 
         pLevel.sendBlockUpdated(pPos, pState, pState, 3);
         sync();
@@ -545,42 +560,11 @@ public class SolarPanelBaseBE extends BlockEntity {
     }
 
     public long getRfTick() {
-        if (name == null) {
-            return 0;
+        float efficiency = runtimeState.lastEfficiency();
+        if (efficiency <= 0) {
+            efficiency = getSolarEfficiency();
         }
-
-        // Calculate modifier bonuses
-        // Output Modifier: Boosts generation via generation value
-        // Efficiency Modifier: Also boosts generation via efficiency value
-        // Weather Modifier: Reduces weather penalties (applied in getSolarEfficiency)
-        float mod = 1.0f;
-        float efficiencyMod = 1.0f;
-
-        for (Map.Entry<BlockInWorld, ConfigLoader.SolarModifierConfig> entry : modifierMap.entrySet()) {
-            float genMod = entry.getValue().generation();
-            float effMod = (2.0f - entry.getValue().efficiency());
-            mod *= genMod;
-            efficiencyMod *= effMod;
-            
-        }
-
-        // Both modifiers multiply together for total generation boost
-        // Example: Output (1.5x) * Efficiency (1.5x) = 2.25x total
-        float totalMod = mod * efficiencyMod;
-
-        ConfigLoader.SolarPanelConfig config = ConfigLoader.getInstance().getSolarPanelConfig(name);
-        if (config == null) {
-            return 0;
-        }
-
-        long baseGeneration = config.energyGeneration();
-        float efficiency = getSolarEfficiency() / 100.0f; // Convert percentage to decimal
-        long finalRF = Math.max(0, (long) (baseGeneration * totalMod * efficiency));
-
-
-        // Final formula: BaseGeneration * AllModifiers * SolarEfficiency
-        // Example Ultimate: 5120 * 2.25 (both modifiers) * 1.0 (100% day) = 11,520 RF/tick
-        return finalRF;
+        return computeGenerationFromEfficiency(efficiency);
     }
 
     public int getMaxProgress() {
@@ -590,6 +574,31 @@ public class SolarPanelBaseBE extends BlockEntity {
 
         // No modifier effect on cycle time - keep it constant
         return ConfigLoader.getInstance().getSolarPanelConfig(name).duration();
+    }
+
+    private long computeGenerationFromEfficiency(float efficiencyPercentage) {
+        if (name == null) {
+            return 0;
+        }
+
+        float generationModifier = 1.0f;
+        float efficiencyModifier = 1.0f;
+
+        for (Map.Entry<BlockInWorld, ConfigLoader.SolarModifierConfig> entry : modifierMap.entrySet()) {
+            generationModifier *= entry.getValue().generation();
+            efficiencyModifier *= (2.0f - entry.getValue().efficiency());
+        }
+
+        ConfigLoader.SolarPanelConfig config = ConfigLoader.getInstance().getSolarPanelConfig(name);
+        if (config == null) {
+            return 0;
+        }
+
+        float totalModifier = generationModifier * efficiencyModifier;
+        long baseGeneration = config.energyGeneration();
+        float efficiencyFraction = Math.max(0.0f, efficiencyPercentage / 100.0f);
+
+        return Math.max(0, (long) (baseGeneration * totalModifier * efficiencyFraction));
     }
 
     public float getSolarEfficiency() {

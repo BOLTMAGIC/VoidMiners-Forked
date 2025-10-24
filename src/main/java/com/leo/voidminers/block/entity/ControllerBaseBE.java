@@ -53,7 +53,7 @@ public class ControllerBaseBE extends BlockEntity {
         @Override
         protected void onContentsChanged(int slot) {
             super.onContentsChanged(slot);
-            ControllerBaseBE.this.inventoryChanged = true;
+            ControllerBaseBE.this.runtimeState.markInventoryChanged();
             ControllerBaseBE.this.level.sendBlockUpdated(getBlockPos(), getBlockState(), getBlockState(), 3);
         }
     };
@@ -71,26 +71,8 @@ public class ControllerBaseBE extends BlockEntity {
     public boolean active;
     public boolean working;
 
-    private boolean canProduceCache = true;
-    private boolean inventoryChanged = true;
-    private boolean blockedByDimension = false;
-    private boolean lastInventoryFull = false;
-    private boolean lastEnergyInsufficient = false;
-    private boolean lastEnergyDemandTooHigh = false;
-    private boolean lastOutputBlocked = false;
-    private int lastEnergyDemand = 0;
-    private long lastEnergyStored = 0;
-    private long lastEnergyCapacity = 0;
-    private int lastRecipeCount = 0;
-    private ItemStack lastBlockedStack = ItemStack.EMPTY;
-    private OutputBlockReason lastOutputBlockReason = OutputBlockReason.NONE;
-
-    private Boolean previousStructureState;
-    private Boolean previousVoidViewState;
-    private Boolean previousActiveState;
-    private Boolean previousWorkingState;
-    private Boolean previousDimensionBlockState;
-    private HaltReason previousHaltReason = HaltReason.NONE;
+    private final ControllerRuntimeState runtimeState = new ControllerRuntimeState();
+    private final ControllerDiagnosticsLogger diagnosticsLogger = new ControllerDiagnosticsLogger();
 
     private LazyOptional<ModEnergyStorage> lazyEnergyHandler = LazyOptional.empty();
     private LazyOptional<ItemStackHandler> lazyItemHandler = LazyOptional.empty();
@@ -124,7 +106,7 @@ public class ControllerBaseBE extends BlockEntity {
     public List<Component> getInteractionTooltip() {
         List<Component> toRet = new ArrayList<>();
 
-        if (blockedByDimension) {
+        if (runtimeState.isBlockedByDimension()) {
             String headerName = name != null ? name.toUpperCase() + " MINER" : "VOID MINER";
             toRet.add(Component.literal("═══ ").withStyle(net.minecraft.ChatFormatting.GRAY)
                 .append(Component.literal(headerName).withStyle(getTierColor()))
@@ -219,12 +201,12 @@ public class ControllerBaseBE extends BlockEntity {
                 .append(Component.literal("NOT WORKING").withStyle(net.minecraft.ChatFormatting.RED)));
             
             toRet.add(Component.literal("⚡ ENERGY: ").withStyle(net.minecraft.ChatFormatting.YELLOW)
-                .append(Component.literal(String.format("%,d", lastEnergyStored)).withStyle(net.minecraft.ChatFormatting.WHITE))
+                .append(Component.literal(String.format("%,d", runtimeState.getLastEnergyStored())).withStyle(net.minecraft.ChatFormatting.WHITE))
                 .append(Component.literal(" / ").withStyle(net.minecraft.ChatFormatting.GRAY))
-                .append(Component.literal(String.format("%,d RF", lastEnergyCapacity)).withStyle(net.minecraft.ChatFormatting.WHITE)));
+                .append(Component.literal(String.format("%,d RF", runtimeState.getLastEnergyCapacity())).withStyle(net.minecraft.ChatFormatting.WHITE)));
 
             toRet.add(Component.literal("⚡ DEMAND: ").withStyle(net.minecraft.ChatFormatting.RED)
-                .append(Component.literal(String.format("%,d RF/tick", lastEnergyDemand)).withStyle(net.minecraft.ChatFormatting.WHITE))
+                .append(Component.literal(String.format("%,d RF/tick", runtimeState.getLastEnergyDemand())).withStyle(net.minecraft.ChatFormatting.WHITE))
                 .append(getModifierText(" (", energyMod, baseEnergyTick, "×)", net.minecraft.ChatFormatting.AQUA)));
 
             toRet.add(Component.literal("📊 MODIFIERS: ").withStyle(net.minecraft.ChatFormatting.AQUA)
@@ -236,33 +218,33 @@ public class ControllerBaseBE extends BlockEntity {
                 .append(Component.literal(" | items ").withStyle(net.minecraft.ChatFormatting.GRAY))
                 .append(Component.literal(String.format("%.2f×", itemMod)).withStyle(net.minecraft.ChatFormatting.LIGHT_PURPLE)));
 
-            if (lastEnergyDemandTooHigh) {
+            if (runtimeState.isLastEnergyDemandTooHigh()) {
                 toRet.add(Component.literal("❌ ENERGY LIMIT: ").withStyle(net.minecraft.ChatFormatting.RED)
                     .append(Component.literal("Required RF/tick exceeds the miner's internal buffer. Remove some item/speed modifiers or add energy modifiers.").withStyle(net.minecraft.ChatFormatting.GRAY)));
             }
 
-            if (lastEnergyInsufficient && !lastEnergyDemandTooHigh) {
-                long deficit = Math.max(0L, (long) lastEnergyDemand - lastEnergyStored);
+            if (runtimeState.isLastEnergyInsufficient() && !runtimeState.isLastEnergyDemandTooHigh()) {
+                long deficit = Math.max(0L, (long) runtimeState.getLastEnergyDemand() - runtimeState.getLastEnergyStored());
                 toRet.add(Component.literal("⚡ DEFICIT: ").withStyle(net.minecraft.ChatFormatting.YELLOW)
                     .append(Component.literal(String.format("Missing %,d RF to start the next cycle", deficit)).withStyle(net.minecraft.ChatFormatting.GRAY)));
             }
 
-            if (lastInventoryFull) {
+            if (runtimeState.isLastInventoryFull()) {
                 toRet.add(Component.literal("📦 OUTPUT: ").withStyle(net.minecraft.ChatFormatting.YELLOW)
                     .append(Component.literal("All slots are at capacity. Extract items or upgrade storage.").withStyle(net.minecraft.ChatFormatting.GRAY)));
             }
 
-            if (lastOutputBlocked) {
-                if (lastOutputBlockReason == OutputBlockReason.NO_RECIPES) {
+            if (runtimeState.isLastOutputBlocked()) {
+                if (runtimeState.getLastOutputBlockReason() == OutputBlockReason.NO_RECIPES) {
                     String dimensionName = level != null ? level.dimension().location().toString() : "unknown";
                     toRet.add(Component.literal("📜 RECIPES: ").withStyle(net.minecraft.ChatFormatting.YELLOW)
                         .append(Component.literal("No valid miner recipes for this tier in ").withStyle(net.minecraft.ChatFormatting.GRAY))
                         .append(Component.literal(dimensionName).withStyle(net.minecraft.ChatFormatting.WHITE))
-                        .append(Component.literal(String.format(" (detected %,d)", lastRecipeCount)).withStyle(net.minecraft.ChatFormatting.GRAY)));
-                } else if (!lastBlockedStack.isEmpty()) {
+                        .append(Component.literal(String.format(" (detected %,d)", runtimeState.getLastRecipeCount())).withStyle(net.minecraft.ChatFormatting.GRAY)));
+                } else if (!runtimeState.getLastBlockedStack().isEmpty()) {
                     toRet.add(Component.literal("📦 BLOCKED ITEM: ").withStyle(net.minecraft.ChatFormatting.YELLOW)
-                        .append(lastBlockedStack.getHoverName().copy().withStyle(net.minecraft.ChatFormatting.WHITE))
-                        .append(Component.literal(String.format(" × %,d", lastBlockedStack.getCount())).withStyle(net.minecraft.ChatFormatting.WHITE))
+                        .append(runtimeState.getLastBlockedStack().getHoverName().copy().withStyle(net.minecraft.ChatFormatting.WHITE))
+                        .append(Component.literal(String.format(" × %,d", runtimeState.getLastBlockedStack().getCount())).withStyle(net.minecraft.ChatFormatting.WHITE))
                         .append(Component.literal(" cannot fit in the output inventory.").withStyle(net.minecraft.ChatFormatting.GRAY)));
                 } else {
                     toRet.add(Component.literal("📦 OUTPUT: ").withStyle(net.minecraft.ChatFormatting.YELLOW)
@@ -270,7 +252,7 @@ public class ControllerBaseBE extends BlockEntity {
                 }
             }
 
-            if (!lastEnergyDemandTooHigh && !lastEnergyInsufficient && !lastInventoryFull && !lastOutputBlocked) {
+            if (!runtimeState.isLastEnergyDemandTooHigh() && !runtimeState.isLastEnergyInsufficient() && !runtimeState.isLastInventoryFull() && !runtimeState.isLastOutputBlocked()) {
                 toRet.add(Component.literal("ℹ DIAGNOSTIC: ").withStyle(net.minecraft.ChatFormatting.BLUE)
                     .append(Component.literal("Awaiting next energy sync. If the issue persists, check external power supply.").withStyle(net.minecraft.ChatFormatting.GRAY)));
             }
@@ -393,21 +375,7 @@ public class ControllerBaseBE extends BlockEntity {
         data.putBoolean("active", active);
         if (structure != null) data.putString("structure", structure.toString());
         data.putBoolean("showStructure", showStructure);
-        data.putBoolean("canProduceCache", canProduceCache);
-        data.putBoolean("blockedByDimension", blockedByDimension);
-        data.putBoolean("inventoryChanged", inventoryChanged);
-        data.putBoolean("lastInventoryFull", lastInventoryFull);
-        data.putBoolean("lastEnergyInsufficient", lastEnergyInsufficient);
-        data.putBoolean("lastEnergyDemandTooHigh", lastEnergyDemandTooHigh);
-        data.putBoolean("lastOutputBlocked", lastOutputBlocked);
-        data.putInt("lastEnergyDemand", lastEnergyDemand);
-        data.putLong("lastEnergyStored", lastEnergyStored);
-        data.putLong("lastEnergyCapacity", lastEnergyCapacity);
-        data.putInt("lastRecipeCount", lastRecipeCount);
-        data.putInt("lastOutputBlockReason", lastOutputBlockReason.ordinal());
-        if (!lastBlockedStack.isEmpty()) {
-            data.put("lastBlockedStack", lastBlockedStack.save(new CompoundTag()));
-        }
+        runtimeState.saveTo(data);
         pTag.put(VoidMiners.MODID, data);
     }
 
@@ -445,67 +413,7 @@ public class ControllerBaseBE extends BlockEntity {
         if (data.contains("showStructure")) {
             showStructure = data.getBoolean("showStructure");
         }
-
-        if (data.contains("canProduceCache")) {
-            canProduceCache = data.getBoolean("canProduceCache");
-        }
-
-        if (data.contains("blockedByDimension")) {
-            blockedByDimension = data.getBoolean("blockedByDimension");
-        }
-
-        if (data.contains("inventoryChanged")) {
-            inventoryChanged = data.getBoolean("inventoryChanged");
-        }
-
-        if (data.contains("lastInventoryFull")) {
-            lastInventoryFull = data.getBoolean("lastInventoryFull");
-        }
-
-        if (data.contains("lastEnergyInsufficient")) {
-            lastEnergyInsufficient = data.getBoolean("lastEnergyInsufficient");
-        }
-
-        if (data.contains("lastEnergyDemandTooHigh")) {
-            lastEnergyDemandTooHigh = data.getBoolean("lastEnergyDemandTooHigh");
-        }
-
-        if (data.contains("lastOutputBlocked")) {
-            lastOutputBlocked = data.getBoolean("lastOutputBlocked");
-        }
-
-        if (data.contains("lastEnergyDemand")) {
-            lastEnergyDemand = data.getInt("lastEnergyDemand");
-        }
-
-        if (data.contains("lastEnergyStored")) {
-            lastEnergyStored = data.getLong("lastEnergyStored");
-        }
-
-        if (data.contains("lastEnergyCapacity")) {
-            lastEnergyCapacity = data.getLong("lastEnergyCapacity");
-        }
-
-        if (data.contains("lastRecipeCount")) {
-            lastRecipeCount = data.getInt("lastRecipeCount");
-        }
-
-        if (data.contains("lastOutputBlockReason")) {
-            int ordinal = data.getInt("lastOutputBlockReason");
-            if (ordinal >= 0 && ordinal < OutputBlockReason.values().length) {
-                lastOutputBlockReason = OutputBlockReason.values()[ordinal];
-            } else {
-                lastOutputBlockReason = OutputBlockReason.NONE;
-            }
-        } else {
-            lastOutputBlockReason = OutputBlockReason.NONE;
-        }
-
-        if (data.contains("lastBlockedStack")) {
-            lastBlockedStack = ItemStack.of(data.getCompound("lastBlockedStack"));
-        } else {
-            lastBlockedStack = ItemStack.EMPTY;
-        }
+        runtimeState.loadFrom(data);
     }
 
     @Override
@@ -565,26 +473,32 @@ public class ControllerBaseBE extends BlockEntity {
         boolean hasVoidView = hasViewOnBedrockOrVoid(pPos);
 
         boolean dimensionAllowed = name == null || ConfigLoader.getInstance().isMinerDimensionAllowed(pLevel.dimension(), name);
-        boolean newBlockedState = !dimensionAllowed;
-        if (blockedByDimension != newBlockedState) {
-            blockedByDimension = newBlockedState;
+        boolean blockedChanged = runtimeState.updateBlockedByDimension(!dimensionAllowed);
+        if (blockedChanged) {
             level.sendBlockUpdated(pPos, getBlockState(), getBlockState(), 3);
-        } else {
-            blockedByDimension = newBlockedState;
         }
 
-        if (blockedByDimension) {
+        if (runtimeState.isBlockedByDimension()) {
             active = false;
             working = false;
-            lastInventoryFull = false;
-            lastOutputBlocked = false;
-            lastEnergyDemandTooHigh = false;
-            lastEnergyInsufficient = false;
-            lastEnergyDemand = 0;
-            lastEnergyStored = energyHandler.getLongEnergyStored();
-            lastEnergyCapacity = energyHandler.getLongMaxEnergyStored();
+            long stored = energyHandler.getLongEnergyStored();
+            long capacity = energyHandler.getLongMaxEnergyStored();
+            runtimeState.resetCycleSnapshot(stored, capacity);
             level.sendBlockUpdated(pPos, getBlockState(), getBlockState(), 3);
-            logStateTransitions(hasVoidView, lastEnergyDemand, lastEnergyStored, lastEnergyCapacity);
+            diagnosticsLogger.logStateTransitions(
+                name,
+                structure,
+                worldPosition,
+                runtimeState.isBlockedByDimension(),
+                foundStructure,
+                hasVoidView,
+                active,
+                working,
+                runtimeState,
+                runtimeState.getLastEnergyDemand(),
+                stored,
+                capacity
+            );
             return;
         }
 
@@ -593,14 +507,23 @@ public class ControllerBaseBE extends BlockEntity {
 
         if (!active) {
             working = false;
-            lastInventoryFull = false;
-            lastOutputBlocked = false;
-            lastEnergyDemandTooHigh = false;
-            lastEnergyInsufficient = false;
-            lastEnergyDemand = 0;
-            lastEnergyStored = energyHandler.getLongEnergyStored();
-            lastEnergyCapacity = energyHandler.getLongMaxEnergyStored();
-            logStateTransitions(hasVoidView, lastEnergyDemand, lastEnergyStored, lastEnergyCapacity);
+            long stored = energyHandler.getLongEnergyStored();
+            long capacity = energyHandler.getLongMaxEnergyStored();
+            runtimeState.resetCycleSnapshot(stored, capacity);
+            diagnosticsLogger.logStateTransitions(
+                name,
+                structure,
+                worldPosition,
+                runtimeState.isBlockedByDimension(),
+                foundStructure,
+                hasVoidView,
+                active,
+                working,
+                runtimeState,
+                runtimeState.getLastEnergyDemand(),
+                stored,
+                capacity
+            );
             return;
         }
 
@@ -608,24 +531,38 @@ public class ControllerBaseBE extends BlockEntity {
         long energyStored = energyHandler.getLongEnergyStored();
         long energyCapacity = energyHandler.getLongMaxEnergyStored();
 
-        lastEnergyDemand = energyDemand;
-        lastEnergyStored = energyStored;
-        lastEnergyCapacity = energyCapacity;
-        lastInventoryFull = isItemHandlerFull();
+        runtimeState.updateEnergySnapshot(energyDemand, energyStored, energyCapacity);
+        runtimeState.setLastInventoryFull(isItemHandlerFull());
 
         boolean canOutput = canProduceItems();
-        lastOutputBlocked = !canOutput;
+        runtimeState.setLastOutputBlocked(!canOutput);
 
-        lastEnergyDemandTooHigh = energyDemand > energyCapacity;
-        lastEnergyInsufficient = !lastEnergyDemandTooHigh && energyDemand > energyStored;
+        runtimeState.setLastEnergyDemandTooHigh(energyDemand > energyCapacity);
+        runtimeState.setLastEnergyInsufficient(!runtimeState.isLastEnergyDemandTooHigh() && energyDemand > energyStored);
 
-        working = !lastInventoryFull && !lastOutputBlocked && !lastEnergyDemandTooHigh && !lastEnergyInsufficient;
+        working = !runtimeState.isLastInventoryFull()
+            && !runtimeState.isLastOutputBlocked()
+            && !runtimeState.isLastEnergyDemandTooHigh()
+            && !runtimeState.isLastEnergyInsufficient();
         level.sendBlockUpdated(getBlockPos(), getBlockState(), getBlockState(), 3);
 
-        logStateTransitions(hasVoidView, energyDemand, energyStored, energyCapacity);
+        diagnosticsLogger.logStateTransitions(
+            name,
+            structure,
+            worldPosition,
+            runtimeState.isBlockedByDimension(),
+            foundStructure,
+            hasVoidView,
+            active,
+            working,
+            runtimeState,
+            energyDemand,
+            energyStored,
+            energyCapacity
+        );
 
         if (!working) {
-            if (lastEnergyDemandTooHigh) {
+            if (runtimeState.isLastEnergyDemandTooHigh()) {
                 progress = 0;
             }
             return;
@@ -633,7 +570,7 @@ public class ControllerBaseBE extends BlockEntity {
 
         progress++;
         energyHandler.removeEnergy(energyDemand);
-        lastEnergyStored = energyHandler.getLongEnergyStored();
+        runtimeState.setLastEnergyStored(energyHandler.getLongEnergyStored());
 
         pLevel.sendBlockUpdated(pPos, pState, pState, 3);
         sync();
@@ -650,103 +587,10 @@ public class ControllerBaseBE extends BlockEntity {
 
         ItemStack output = getBoostedStack(getWeightedItem(allOutputs, level.random));
 
-        // Insert the output, splitting across multiple slots if necessary
         insertItemStack(output);
 
         progress = 0;
         sync();
-    }
-
-    private void logStateTransitions(boolean hasVoidView, int energyDemand, long energyStored, long energyCapacity) {
-        if (!VoidMiners.LOGGER.isDebugEnabled()) {
-            return;
-        }
-
-        if (previousDimensionBlockState == null || previousDimensionBlockState != blockedByDimension) {
-            logDebug("Dimension access {}", blockedByDimension ? "blocked" : "permitted");
-        }
-
-        if (previousStructureState == null || previousStructureState != foundStructure) {
-            logDebug("Structure detection {}", foundStructure ? "succeeded" : "lost");
-        }
-
-        if (previousVoidViewState == null || previousVoidViewState != hasVoidView) {
-            logDebug("Void exposure {}", hasVoidView ? "established" : "lost");
-        }
-
-        if (previousActiveState == null || previousActiveState != active) {
-            logDebug("Active state {}", active ? "enabled" : "disabled");
-        }
-
-        HaltReason haltReason = determineHaltReason(hasVoidView);
-
-        if (previousWorkingState == null || previousWorkingState != working) {
-            if (working) {
-                logDebug("Cycle running (demand={} RF/t, stored={} / {} RF)", energyDemand, energyStored, energyCapacity);
-            } else {
-                logDebug("Cycle halted: {}, demand={} RF/t, stored={} / {} RF, inventoryFull={}, outputBlocked={}, bufferExceeded={}, energyLow={}",
-                        haltReason.description(),
-                        energyDemand,
-                        energyStored,
-                        energyCapacity,
-                        lastInventoryFull,
-                        lastOutputBlocked,
-                        lastEnergyDemandTooHigh,
-                        lastEnergyInsufficient);
-            }
-        } else if (!working && previousHaltReason != haltReason) {
-            logDebug("Halt reason changed to {} (inventoryFull={}, outputBlocked={}, bufferExceeded={}, energyLow={})",
-                    haltReason.description(),
-                    lastInventoryFull,
-                    lastOutputBlocked,
-                    lastEnergyDemandTooHigh,
-                    lastEnergyInsufficient);
-        }
-
-        previousDimensionBlockState = blockedByDimension;
-        previousStructureState = foundStructure;
-        previousVoidViewState = hasVoidView;
-        previousActiveState = active;
-        previousWorkingState = working;
-        previousHaltReason = haltReason;
-    }
-
-    private HaltReason determineHaltReason(boolean hasVoidView) {
-        if (blockedByDimension) {
-            return HaltReason.DIMENSION_BLOCKED;
-        }
-        if (!foundStructure) {
-            return HaltReason.STRUCTURE_MISSING;
-        }
-        if (!hasVoidView) {
-            return HaltReason.NO_VOID_VIEW;
-        }
-        if (lastInventoryFull) {
-            return HaltReason.INVENTORY_FULL;
-        }
-        if (lastOutputBlocked) {
-            return HaltReason.OUTPUT_BLOCKED;
-        }
-        if (lastEnergyDemandTooHigh) {
-            return HaltReason.ENERGY_BUFFER;
-        }
-        if (lastEnergyInsufficient) {
-            return HaltReason.ENERGY_DEFICIT;
-        }
-        return HaltReason.NONE;
-    }
-
-    private void logDebug(String message, Object... args) {
-        if (!VoidMiners.LOGGER.isDebugEnabled()) {
-            return;
-        }
-
-        Object[] contextualArgs = new Object[args.length + 2];
-        contextualArgs[0] = name != null ? name : (structure != null ? structure.toString() : "unconfigured");
-        contextualArgs[1] = worldPosition;
-        System.arraycopy(args, 0, contextualArgs, 2, args.length);
-
-        VoidMiners.LOGGER.debug("[{} @ {}] " + message, contextualArgs);
     }
 
     @Override
@@ -879,14 +723,13 @@ public class ControllerBaseBE extends BlockEntity {
     }
 
     private boolean canProduceItems() {
-        // Update cache if inventory changed or at start of new cycle
-        if (inventoryChanged || progress == 0) {
-            canProduceCache = calculateCanProduceItems();
-            inventoryChanged = false;
+        if (runtimeState.isInventoryChanged() || progress == 0) {
+            runtimeState.setCanProduceCache(calculateCanProduceItems());
+            runtimeState.clearInventoryChangedFlag();
         }
 
-        lastOutputBlocked = !canProduceCache;
-        return canProduceCache;
+        runtimeState.setLastOutputBlocked(!runtimeState.canProduceCache());
+        return runtimeState.canProduceCache();
     }
 
     private boolean calculateCanProduceItems() {
@@ -896,27 +739,26 @@ public class ControllerBaseBE extends BlockEntity {
             allOutputs.add(recipe.output().copy());
         }
 
-        lastRecipeCount = allOutputs.size();
-        lastBlockedStack = ItemStack.EMPTY;
+        runtimeState.setLastRecipeCount(allOutputs.size());
+        runtimeState.resetBlockedStack();
 
         if (allOutputs.isEmpty()) {
-            lastOutputBlockReason = OutputBlockReason.NO_RECIPES;
+            runtimeState.setLastOutputBlockReason(OutputBlockReason.NO_RECIPES);
             return false;
         }
 
-        // Check if any potential output can be inserted
         for (WeightedStack weightedStack : allOutputs) {
             ItemStack output = getBoostedStack(weightedStack.stack.copy());
             if (canInsertItem(output)) {
-                lastOutputBlockReason = OutputBlockReason.NONE;
-                lastBlockedStack = ItemStack.EMPTY;
+                runtimeState.setLastOutputBlockReason(OutputBlockReason.NONE);
+                runtimeState.resetBlockedStack();
                 return true;
-            } else if (lastBlockedStack.isEmpty()) {
-                lastBlockedStack = output.copy();
+            } else if (runtimeState.getLastBlockedStack().isEmpty()) {
+                runtimeState.setLastBlockedStack(output);
             }
         }
 
-        lastOutputBlockReason = OutputBlockReason.NO_VALID_SLOT;
+        runtimeState.setLastOutputBlockReason(OutputBlockReason.NO_VALID_SLOT);
         return false;
     }
 
@@ -999,34 +841,6 @@ public class ControllerBaseBE extends BlockEntity {
             }
         });
     }
-
-    private enum OutputBlockReason {
-        NONE,
-        NO_RECIPES,
-        NO_VALID_SLOT
-    }
-
-    private enum HaltReason {
-        NONE("operational"),
-        DIMENSION_BLOCKED("dimension restricted"),
-        STRUCTURE_MISSING("multiblock missing"),
-        NO_VOID_VIEW("no void exposure"),
-        INVENTORY_FULL("inventory full"),
-        OUTPUT_BLOCKED("no valid output slot"),
-        ENERGY_BUFFER("energy demand exceeds buffer"),
-        ENERGY_DEFICIT("insufficient stored energy");
-
-        private final String description;
-
-        HaltReason(String description) {
-            this.description = description;
-        }
-
-        public String description() {
-            return description;
-        }
-    }
-
     @Override
     public void invalidateCaps() {
         super.invalidateCaps();
