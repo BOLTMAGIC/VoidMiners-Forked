@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.20.1-1.9.22] - 2025-10-24
+- Added debug traces around controller state changes so dimension locks, structure loss, energy shortages, and inventory stalls surface in logs immediately.
+- Updated project metadata to `1.20.1-1.9.22` for this release build.
+
 ## [1.20.1-1.9.21] - 2025-10-20
 - Added detailed miner diagnostics that record energy demand, inventory fullness, modifier multipliers, and recipe availability so players see the exact reason a Void Miner pauses.
 - Prevent miners from endlessly retrying impossible cycles by detecting when modifier stacks push RF/t requirements beyond the internal buffer and resetting progress until power or modifiers are adjusted.

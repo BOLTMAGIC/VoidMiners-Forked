@@ -85,6 +85,13 @@ public class ControllerBaseBE extends BlockEntity {
     private ItemStack lastBlockedStack = ItemStack.EMPTY;
     private OutputBlockReason lastOutputBlockReason = OutputBlockReason.NONE;
 
+    private Boolean previousStructureState;
+    private Boolean previousVoidViewState;
+    private Boolean previousActiveState;
+    private Boolean previousWorkingState;
+    private Boolean previousDimensionBlockState;
+    private HaltReason previousHaltReason = HaltReason.NONE;
+
     private LazyOptional<ModEnergyStorage> lazyEnergyHandler = LazyOptional.empty();
     private LazyOptional<ItemStackHandler> lazyItemHandler = LazyOptional.empty();
 
@@ -549,11 +556,13 @@ public class ControllerBaseBE extends BlockEntity {
     }
 
     public void tick(Level pLevel, BlockPos pPos, BlockState pState, ResourceLocation structure, String name) {
-        if(getStructure() == null) {
+        if (getStructure() == null) {
             setup(structure, name);
         }
 
         checkStructure(pLevel, pPos);
+
+        boolean hasVoidView = hasViewOnBedrockOrVoid(pPos);
 
         boolean dimensionAllowed = name == null || ConfigLoader.getInstance().isMinerDimensionAllowed(pLevel.dimension(), name);
         boolean newBlockedState = !dimensionAllowed;
@@ -567,19 +576,31 @@ public class ControllerBaseBE extends BlockEntity {
         if (blockedByDimension) {
             active = false;
             working = false;
+            lastInventoryFull = false;
+            lastOutputBlocked = false;
+            lastEnergyDemandTooHigh = false;
+            lastEnergyInsufficient = false;
+            lastEnergyDemand = 0;
+            lastEnergyStored = energyHandler.getLongEnergyStored();
+            lastEnergyCapacity = energyHandler.getLongMaxEnergyStored();
             level.sendBlockUpdated(pPos, getBlockState(), getBlockState(), 3);
+            logStateTransitions(hasVoidView, lastEnergyDemand, lastEnergyStored, lastEnergyCapacity);
             return;
         }
 
-        active = foundStructure && hasViewOnBedrockOrVoid(pPos);
+        active = foundStructure && hasVoidView;
         level.sendBlockUpdated(pPos, getBlockState(), getBlockState(), 3);
 
-        if(!active) {
+        if (!active) {
             working = false;
             lastInventoryFull = false;
             lastOutputBlocked = false;
             lastEnergyDemandTooHigh = false;
             lastEnergyInsufficient = false;
+            lastEnergyDemand = 0;
+            lastEnergyStored = energyHandler.getLongEnergyStored();
+            lastEnergyCapacity = energyHandler.getLongMaxEnergyStored();
+            logStateTransitions(hasVoidView, lastEnergyDemand, lastEnergyStored, lastEnergyCapacity);
             return;
         }
 
@@ -600,6 +621,8 @@ public class ControllerBaseBE extends BlockEntity {
 
         working = !lastInventoryFull && !lastOutputBlocked && !lastEnergyDemandTooHigh && !lastEnergyInsufficient;
         level.sendBlockUpdated(getBlockPos(), getBlockState(), getBlockState(), 3);
+
+        logStateTransitions(hasVoidView, energyDemand, energyStored, energyCapacity);
 
         if (!working) {
             if (lastEnergyDemandTooHigh) {
@@ -632,6 +655,98 @@ public class ControllerBaseBE extends BlockEntity {
 
         progress = 0;
         sync();
+    }
+
+    private void logStateTransitions(boolean hasVoidView, int energyDemand, long energyStored, long energyCapacity) {
+        if (!VoidMiners.LOGGER.isDebugEnabled()) {
+            return;
+        }
+
+        if (previousDimensionBlockState == null || previousDimensionBlockState != blockedByDimension) {
+            logDebug("Dimension access {}", blockedByDimension ? "blocked" : "permitted");
+        }
+
+        if (previousStructureState == null || previousStructureState != foundStructure) {
+            logDebug("Structure detection {}", foundStructure ? "succeeded" : "lost");
+        }
+
+        if (previousVoidViewState == null || previousVoidViewState != hasVoidView) {
+            logDebug("Void exposure {}", hasVoidView ? "established" : "lost");
+        }
+
+        if (previousActiveState == null || previousActiveState != active) {
+            logDebug("Active state {}", active ? "enabled" : "disabled");
+        }
+
+        HaltReason haltReason = determineHaltReason(hasVoidView);
+
+        if (previousWorkingState == null || previousWorkingState != working) {
+            if (working) {
+                logDebug("Cycle running (demand={} RF/t, stored={} / {} RF)", energyDemand, energyStored, energyCapacity);
+            } else {
+                logDebug("Cycle halted: {}, demand={} RF/t, stored={} / {} RF, inventoryFull={}, outputBlocked={}, bufferExceeded={}, energyLow={}",
+                        haltReason.description(),
+                        energyDemand,
+                        energyStored,
+                        energyCapacity,
+                        lastInventoryFull,
+                        lastOutputBlocked,
+                        lastEnergyDemandTooHigh,
+                        lastEnergyInsufficient);
+            }
+        } else if (!working && previousHaltReason != haltReason) {
+            logDebug("Halt reason changed to {} (inventoryFull={}, outputBlocked={}, bufferExceeded={}, energyLow={})",
+                    haltReason.description(),
+                    lastInventoryFull,
+                    lastOutputBlocked,
+                    lastEnergyDemandTooHigh,
+                    lastEnergyInsufficient);
+        }
+
+        previousDimensionBlockState = blockedByDimension;
+        previousStructureState = foundStructure;
+        previousVoidViewState = hasVoidView;
+        previousActiveState = active;
+        previousWorkingState = working;
+        previousHaltReason = haltReason;
+    }
+
+    private HaltReason determineHaltReason(boolean hasVoidView) {
+        if (blockedByDimension) {
+            return HaltReason.DIMENSION_BLOCKED;
+        }
+        if (!foundStructure) {
+            return HaltReason.STRUCTURE_MISSING;
+        }
+        if (!hasVoidView) {
+            return HaltReason.NO_VOID_VIEW;
+        }
+        if (lastInventoryFull) {
+            return HaltReason.INVENTORY_FULL;
+        }
+        if (lastOutputBlocked) {
+            return HaltReason.OUTPUT_BLOCKED;
+        }
+        if (lastEnergyDemandTooHigh) {
+            return HaltReason.ENERGY_BUFFER;
+        }
+        if (lastEnergyInsufficient) {
+            return HaltReason.ENERGY_DEFICIT;
+        }
+        return HaltReason.NONE;
+    }
+
+    private void logDebug(String message, Object... args) {
+        if (!VoidMiners.LOGGER.isDebugEnabled()) {
+            return;
+        }
+
+        Object[] contextualArgs = new Object[args.length + 2];
+        contextualArgs[0] = name != null ? name : (structure != null ? structure.toString() : "unconfigured");
+        contextualArgs[1] = worldPosition;
+        System.arraycopy(args, 0, contextualArgs, 2, args.length);
+
+        VoidMiners.LOGGER.debug("[{} @ {}] " + message, contextualArgs);
     }
 
     @Override
@@ -889,6 +1004,27 @@ public class ControllerBaseBE extends BlockEntity {
         NONE,
         NO_RECIPES,
         NO_VALID_SLOT
+    }
+
+    private enum HaltReason {
+        NONE("operational"),
+        DIMENSION_BLOCKED("dimension restricted"),
+        STRUCTURE_MISSING("multiblock missing"),
+        NO_VOID_VIEW("no void exposure"),
+        INVENTORY_FULL("inventory full"),
+        OUTPUT_BLOCKED("no valid output slot"),
+        ENERGY_BUFFER("energy demand exceeds buffer"),
+        ENERGY_DEFICIT("insufficient stored energy");
+
+        private final String description;
+
+        HaltReason(String description) {
+            this.description = description;
+        }
+
+        public String description() {
+            return description;
+        }
     }
 
     @Override
