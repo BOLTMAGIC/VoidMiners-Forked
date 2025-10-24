@@ -1,7 +1,7 @@
 package com.leo.voidminers.event;
 
 import com.leo.voidminers.VoidMiners;
-import com.leo.voidminers.block.entity.renderer.ControllerRenderer;
+import com.leo.voidminers.block.controller.entity.renderer.ControllerRenderer;
 import com.leo.voidminers.init.ModBlockEntities;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.client.event.EntityRenderersEvent;

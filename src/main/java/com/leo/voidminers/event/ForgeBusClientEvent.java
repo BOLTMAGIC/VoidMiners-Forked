@@ -1,9 +1,9 @@
 package com.leo.voidminers.event;
 
 import com.leo.voidminers.VoidMiners;
-import com.leo.voidminers.block.ModifierBlock;
-import com.leo.voidminers.block.SolarPanelBaseBlock;
-import com.leo.voidminers.block.ControllerBaseBlock;
+import com.leo.voidminers.block.modifier.ModifierBlock;
+import com.leo.voidminers.block.solar.SolarPanelBaseBlock;
+import com.leo.voidminers.block.controller.ControllerBaseBlock;
 import com.leo.voidminers.config.ConfigLoader;
 import com.leo.voidminers.init.ModItems;
 import com.leo.voidminers.util.MapUtil;

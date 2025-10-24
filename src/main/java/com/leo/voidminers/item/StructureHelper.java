@@ -1,8 +1,8 @@
 package com.leo.voidminers.item;
 
 import com.leo.voidminers.VoidMiners;
-import com.leo.voidminers.block.entity.ControllerBaseBE;
-import com.leo.voidminers.block.entity.SolarPanelBaseBE;
+import com.leo.voidminers.block.controller.entity.ControllerBaseBE;
+import com.leo.voidminers.block.solar.entity.SolarPanelBaseBE;
 import com.leo.voidminers.multiblock.miner.MinerMultiblocks;
 import com.leo.voidminers.multiblock.solar.SolarPanelMultiblocks;
 import net.minecraft.ChatFormatting;

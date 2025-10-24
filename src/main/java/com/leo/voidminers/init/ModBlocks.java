@@ -1,8 +1,8 @@
 package com.leo.voidminers.init;
 
 import com.leo.voidminers.VoidMiners;
-import com.leo.voidminers.block.BaseTransparentBlock;
-import com.leo.voidminers.block.ModifierBlock;
+import com.leo.voidminers.block.base.BaseTransparentBlock;
+import com.leo.voidminers.block.modifier.ModifierBlock;
 
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.Item;

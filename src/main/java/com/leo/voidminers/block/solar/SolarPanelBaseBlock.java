@@ -1,6 +1,7 @@
-package com.leo.voidminers.block;
+package com.leo.voidminers.block.solar;
 
-import com.leo.voidminers.block.entity.ControllerBaseBE;
+import com.leo.voidminers.block.base.BaseTransparentBlock;
+import com.leo.voidminers.block.solar.entity.SolarPanelBaseBE;
 import com.leo.voidminers.util.ShapeUtil;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
@@ -23,25 +24,23 @@ import net.minecraft.world.phys.shapes.Shapes;
 import net.minecraft.world.phys.shapes.VoxelShape;
 import org.jetbrains.annotations.Nullable;
 
-public class ControllerBaseBlock extends BaseTransparentBlock implements EntityBlock {
-    final ResourceLocation structure;
-    final String name;
+public class SolarPanelBaseBlock extends BaseTransparentBlock implements EntityBlock {
+    public final ResourceLocation structure;
+    public final String name;
 
-    public ControllerBaseBlock(Properties pProperties, ResourceLocation structure, String name) {
+    public SolarPanelBaseBlock(Properties pProperties, ResourceLocation structure, String name) {
         super(pProperties);
         this.structure = structure;
         this.name = name;
-    }
-
-    public String getTierName() {
-        return name;
     }
 
     @Override
     public void onRemove(BlockState pState, Level pLevel, BlockPos pPos, BlockState pNewState, boolean pIsMoving) {
         if (pState.getBlock() != pNewState.getBlock()) {
             BlockEntity blockEntity = pLevel.getBlockEntity(pPos);
-            ((ControllerBaseBE) blockEntity).drops();
+            if (blockEntity instanceof SolarPanelBaseBE solarBE) {
+                solarBE.drops();
+            }
         }
 
         super.onRemove(pState, pLevel, pPos, pNewState, pIsMoving);
@@ -50,15 +49,23 @@ public class ControllerBaseBlock extends BaseTransparentBlock implements EntityB
     @Nullable
     @Override
     public BlockEntity newBlockEntity(BlockPos blockPos, BlockState blockState) {
-        return new ControllerBaseBE(blockPos, blockState);
+        return new SolarPanelBaseBE(blockPos, blockState);
     }
 
     @Override
     public InteractionResult use(BlockState pState, Level pLevel, BlockPos pPos, Player pPlayer, InteractionHand pHand, BlockHitResult pHit) {
-        ControllerBaseBE blockEntity = (ControllerBaseBE) pLevel.getBlockEntity(pPos);
+        BlockEntity blockEntityRaw = pLevel.getBlockEntity(pPos);
+        if (!(blockEntityRaw instanceof SolarPanelBaseBE blockEntity)) {
+            return InteractionResult.FAIL;
+        }
 
         if (pLevel.isClientSide) {
             return InteractionResult.sidedSuccess(pLevel.isClientSide());
+        }
+
+        // Ensure the solar panel is properly initialized
+        if (blockEntity.getStructure() == null) {
+            blockEntity.setup(structure, name);
         }
 
         if (pPlayer.isCrouching()) {
@@ -78,12 +85,10 @@ public class ControllerBaseBlock extends BaseTransparentBlock implements EntityB
     public void setPlacedBy(Level pLevel, BlockPos pPos, BlockState pState, @Nullable LivingEntity pPlacer, ItemStack pStack) {
         super.setPlacedBy(pLevel, pPos, pState, pPlacer, pStack);
 
-        ControllerBaseBE controller = ((ControllerBaseBE) pLevel.getBlockEntity(pPos));
-        if (controller == null) {
-            controller = ((ControllerBaseBE) this.newBlockEntity(pPos, pState));
+        BlockEntity blockEntityRaw = pLevel.getBlockEntity(pPos);
+        if (blockEntityRaw instanceof SolarPanelBaseBE controller) {
+            controller.setup(structure, name);
         }
-
-        controller.setup(structure, name);
     }
 
     @Nullable
@@ -93,7 +98,7 @@ public class ControllerBaseBlock extends BaseTransparentBlock implements EntityB
             return null;
         }
 
-        return ((level, blockPos, blockState, be) -> ((ControllerBaseBE) be).tick(pLevel, blockPos, blockState, structure, name));
+        return ((level, blockPos, blockState, be) -> ((SolarPanelBaseBE) be).tick(pLevel, blockPos, blockState, structure, name));
     }
 
     @Override

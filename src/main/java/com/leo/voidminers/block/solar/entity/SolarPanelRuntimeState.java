@@ -1,4 +1,4 @@
-package com.leo.voidminers.block.entity;
+package com.leo.voidminers.block.solar.entity;
 
 import net.minecraft.nbt.CompoundTag;
 

@@ -1,4 +1,4 @@
-package com.leo.voidminers.block;
+package com.leo.voidminers.block.modifier;
 
 import net.minecraft.world.level.block.Block;
 

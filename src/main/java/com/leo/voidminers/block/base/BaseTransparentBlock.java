@@ -1,4 +1,4 @@
-package com.leo.voidminers.block;
+package com.leo.voidminers.block.base;
 
 import com.leo.voidminers.util.ShapeUtil;
 import net.minecraft.core.BlockPos;

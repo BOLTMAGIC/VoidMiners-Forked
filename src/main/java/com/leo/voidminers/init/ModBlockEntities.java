@@ -1,8 +1,8 @@
 package com.leo.voidminers.init;
 
 import com.leo.voidminers.VoidMiners;
-import com.leo.voidminers.block.entity.ControllerBaseBE;
-import com.leo.voidminers.block.entity.SolarPanelBaseBE;
+import com.leo.voidminers.block.controller.entity.ControllerBaseBE;
+import com.leo.voidminers.block.solar.entity.SolarPanelBaseBE;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraftforge.registries.DeferredRegister;

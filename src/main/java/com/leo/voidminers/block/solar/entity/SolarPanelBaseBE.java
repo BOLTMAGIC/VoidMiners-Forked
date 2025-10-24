@@ -1,7 +1,7 @@
-package com.leo.voidminers.block.entity;
+package com.leo.voidminers.block.solar.entity;
 
 import com.leo.voidminers.VoidMiners;
-import com.leo.voidminers.block.ModifierBlock;
+import com.leo.voidminers.block.modifier.ModifierBlock;
 import com.leo.voidminers.config.ConfigLoader;
 import com.leo.voidminers.energy.ModEnergyStorage;
 import com.leo.voidminers.init.ModBlockEntities;

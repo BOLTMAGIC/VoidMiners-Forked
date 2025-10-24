@@ -1,6 +1,6 @@
-package com.leo.voidminers.block.entity.renderer;
+package com.leo.voidminers.block.controller.entity.renderer;
 
-import com.leo.voidminers.block.entity.ControllerBaseBE;
+import com.leo.voidminers.block.controller.entity.ControllerBaseBE;
 import com.leo.voidminers.util.MiscUtil;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;

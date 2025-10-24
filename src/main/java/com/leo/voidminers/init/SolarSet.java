@@ -1,8 +1,8 @@
 package com.leo.voidminers.init;
 
 import com.leo.voidminers.VoidMiners;
-import com.leo.voidminers.block.SolarPanelBaseBlock;
-import com.leo.voidminers.block.ModifierBlock;
+import com.leo.voidminers.block.solar.SolarPanelBaseBlock;
+import com.leo.voidminers.block.modifier.ModifierBlock;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.Rarity;

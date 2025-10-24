@@ -1,4 +1,4 @@
-package com.leo.voidminers.block.entity;
+package com.leo.voidminers.block.controller.entity;
 
 enum OutputBlockReason {
     NONE,

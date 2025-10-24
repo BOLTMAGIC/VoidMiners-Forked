@@ -1,4 +1,4 @@
-package com.leo.voidminers.block.entity;
+package com.leo.voidminers.block.controller.entity;
 
 import com.leo.voidminers.VoidMiners;
 import net.minecraft.core.BlockPos;
