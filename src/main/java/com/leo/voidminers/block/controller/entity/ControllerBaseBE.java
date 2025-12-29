@@ -404,26 +404,33 @@ public class ControllerBaseBE extends BlockEntity {
     }
 
     public void checkStructure(Level pLevel, BlockPos pPos) {
-        RegisteredMultiBlockPattern pattern = MultiBlockManager.findAnyStructure(pLevel, pPos, Rotation.NONE);
-        if (pattern == null) {
-            foundStructure = false;
-            return;
-        }
-
-        MultiblockMatchResult result = pattern.pattern().matchesWithResult(pLevel, pPos, Rotation.NONE);
-        if (result == null || !pattern.ID().equals(structure)) {
-            return;
-        }
-
+        // Reset before attempting to find a matching structure so stale state isn't preserved
+        foundStructure = false;
         modifierMap.clear();
-        foundStructure = true;
-        result.blocks().stream().filter(block -> block.getState().getBlock() instanceof ModifierBlock).forEach(block -> {
-            ConfigLoader.ModifierConfig modifier = ConfigLoader.getInstance().getModifierConfig(block.getState().getBlock());
 
-            if (!modifierMap.containsKey(block)) {
-                modifierMap.put(block, modifier);
-            }
-        });
+        // Try all rotations to allow the controller to be placed at any orientation
+        for (Rotation rot : Rotation.values()) {
+            RegisteredMultiBlockPattern pattern = MultiBlockManager.findAnyStructure(pLevel, pPos, rot);
+            if (pattern == null) continue;
+
+            MultiblockMatchResult result = pattern.pattern().matchesWithResult(pLevel, pPos, rot);
+            if (result == null) continue;
+
+            if (!pattern.ID().equals(structure)) continue;
+
+            // We found a matching pattern for the configured structure in this rotation
+            foundStructure = true;
+            result.blocks().stream()
+                .filter(block -> block.getState().getBlock() instanceof ModifierBlock)
+                .forEach(block -> {
+                    ConfigLoader.ModifierConfig modifier = ConfigLoader.getInstance().getModifierConfig(block.getState().getBlock());
+                    if (!modifierMap.containsKey(block)) {
+                        modifierMap.put(block, modifier);
+                    }
+                });
+
+            break;
+        }
     }
 
     ControllerRuntimeState getRuntimeStateInternal() {
