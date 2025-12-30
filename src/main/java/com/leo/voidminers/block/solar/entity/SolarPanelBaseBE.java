@@ -5,7 +5,6 @@ import com.leo.voidminers.block.modifier.ModifierBlock;
 import com.leo.voidminers.config.ConfigLoader;
 import com.leo.voidminers.energy.ModEnergyStorage;
 import com.leo.voidminers.init.ModBlockEntities;
-import com.leo.voidminers.multiblock.solar.SolarPanelMultiblocks;
 import com.leo.voidminers.util.MiscUtil;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -17,7 +16,6 @@ import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.Containers;
 import net.minecraft.world.SimpleContainer;
-import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LightLayer;
 import net.minecraft.world.level.block.Block;
@@ -40,6 +38,9 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.Collections;
+import java.util.HashSet;
 
 public class SolarPanelBaseBE extends BlockEntity {
 
@@ -72,6 +73,76 @@ public class SolarPanelBaseBE extends BlockEntity {
     private LazyOptional<ModEnergyStorage> lazyEnergyHandler = LazyOptional.empty();
     private LazyOptional<ItemStackHandler> lazyItemHandler = LazyOptional.empty();
 
+    // Cache for detected always-day dimensions (e.g. void-like dims).
+    // We populate this lazily after strong confirmations to avoid false positives.
+    private static final Set<String> DETECTED_ALWAYS_DAY = Collections.synchronizedSet(new HashSet<>());
+    // Temporary counters per dimension: incremented when we observe full skylight at night; must reach THRESHOLD to cache.
+    private static final Map<String, Integer> DETECTION_COUNTERS = Collections.synchronizedMap(new HashMap<>());
+    // Use a high threshold to avoid transient/edge-case detection (e.g. 200 ticks ~10 seconds)
+    private static final int ALWAYS_DAY_CONFIRM_THRESHOLD = 200;
+
+    /**
+     * Strict detection for always-day dimensions:
+     * - Explicitly accept dimension ids containing "void"/"voidminers".
+     * - Otherwise only detect if all of the following hold:
+     *   * Not a vanilla dimension (overworld/nether/end)
+     *   * Server-side (avoid client noise)
+     *   * Currently night
+     *   * The panel has a direct view to sky and skylight == 15 above the panel
+     *   * Observed for MANY consecutive ticks (threshold above)
+     */
+    private boolean isAlwaysDayDimensionAt(Level lvl, BlockPos pos) {
+        if (lvl == null) return false;
+        String dimKey = lvl.dimension().location().toString();
+
+        // Cached positive - but re-validate: if a cached entry points to a vanilla dimension (overworld/nether/end)
+        // we must remove it to avoid persisting false positives from earlier heuristics.
+        if (DETECTED_ALWAYS_DAY.contains(dimKey)) {
+            String lkCached = dimKey.toLowerCase();
+            if (lkCached.contains("overworld") || lkCached.equals("minecraft:overworld") || lkCached.contains("the_nether") || lkCached.contains("the_end") || lkCached.contains("nether") || lkCached.contains("end")) {
+                DETECTED_ALWAYS_DAY.remove(dimKey);
+            } else {
+                return true;
+            }
+        }
+
+        String lk = dimKey.toLowerCase();
+
+        // Quick explicit name matches
+        if (lk.contains("void") || lk.contains("voidminers")) {
+            DETECTED_ALWAYS_DAY.add(dimKey);
+            return true;
+        }
+
+        // Never treat obvious vanilla dims as always-day
+        if (lk.contains("overworld") || lk.equals("minecraft:overworld") || lk.contains("the_nether") || lk.contains("the_end") || lk.contains("nether") || lk.contains("end")) {
+            return false;
+        }
+
+        // Only run the runtime heuristic on server side
+        if (lvl.isClientSide) return false;
+
+        // require night + full skylight + direct view to sky
+        if (!lvl.isDay()) {
+            BlockPos checkPos = pos.above();
+            int sky = lvl.getBrightness(LightLayer.SKY, checkPos);
+            if (sky >= 15 && hasViewOnSky(pos)) {
+                int c = DETECTION_COUNTERS.getOrDefault(dimKey, 0) + 1;
+                DETECTION_COUNTERS.put(dimKey, c);
+                if (c >= ALWAYS_DAY_CONFIRM_THRESHOLD) {
+                    DETECTED_ALWAYS_DAY.add(dimKey);
+                    DETECTION_COUNTERS.remove(dimKey);
+                    return true;
+                }
+                return false;
+            }
+        }
+
+        // Reset counter on any failure
+        DETECTION_COUNTERS.remove(dimKey);
+        return false;
+    }
+
     public SolarPanelBaseBE(BlockPos pPos, BlockState pBlockState) {
         super(ModBlockEntities.SOLAR_PANEL_BASE_BE.get(), pPos, pBlockState);
     }
@@ -89,14 +160,14 @@ public class SolarPanelBaseBE extends BlockEntity {
         }
 
         if (name == null) {
-            energyHandler = new ModEnergyStorage((long)ENERGY_CAPACITY, (long)ENERGY_CAPACITY, (long)ENERGY_CAPACITY, energyHandler != null ? energyHandler.getLongEnergyStored() : 0);
+            energyHandler = new ModEnergyStorage(ENERGY_CAPACITY, ENERGY_CAPACITY, ENERGY_CAPACITY, energyHandler != null ? energyHandler.getLongEnergyStored() : 0);
             lazyEnergyHandler = LazyOptional.of(() -> energyHandler);
             return;
         }
 
         ConfigLoader.SolarPanelConfig config = ConfigLoader.getInstance().getSolarPanelConfig(name);
         if (config == null) {
-            energyHandler = new ModEnergyStorage((long)ENERGY_CAPACITY, (long)ENERGY_CAPACITY, (long)ENERGY_CAPACITY, energyHandler != null ? energyHandler.getLongEnergyStored() : 0);
+            energyHandler = new ModEnergyStorage(ENERGY_CAPACITY, ENERGY_CAPACITY, ENERGY_CAPACITY, energyHandler != null ? energyHandler.getLongEnergyStored() : 0);
             lazyEnergyHandler = LazyOptional.of(() -> energyHandler);
             return;
         }
@@ -114,6 +185,7 @@ public class SolarPanelBaseBE extends BlockEntity {
         return MiscUtil.colorMap.getOrDefault(structure.getPath().replace("solar_", ""), 0xFFFFFFFF);
     }
 
+    @SuppressWarnings("unused")
     public List<Component> getInteractionTooltip() {
         List<Component> toRet = new ArrayList<>();
 
@@ -139,8 +211,8 @@ public class SolarPanelBaseBE extends BlockEntity {
             toRet.add(Component.literal("🌌 DIMENSION: ").withStyle(net.minecraft.ChatFormatting.BLUE)
                 .append(Component.literal(dimensionId).withStyle(net.minecraft.ChatFormatting.GRAY)));
 
-            toRet.add(Component.literal("🛠 CONFIG PATH: ").withStyle(net.minecraft.ChatFormatting.AQUA)
-                .append(Component.literal("config/void-miners.json5 → SOLAR_DIMENSION_SETTINGS").withStyle(net.minecraft.ChatFormatting.WHITE)));
+            toRet.add(Component.literal("🛠 REASON: ").withStyle(net.minecraft.ChatFormatting.AQUA)
+                .append(Component.literal("Solar generation is disabled in this dimension.").withStyle(net.minecraft.ChatFormatting.WHITE)));
 
             return toRet;
         }
@@ -193,13 +265,20 @@ public class SolarPanelBaseBE extends BlockEntity {
                     currentEfficiency = getSolarEfficiency();
                 }
                 if (currentEfficiency <= 0) {
-                    long timeOfDay = level.getDayTime() % 24000;
-                    if (timeOfDay >= 12000) {
-                        reason = "Night time (wait for day)";
-                    } else if (level.isRaining()) {
-                        reason = level.isThundering() ? "Thunderstorm (15% efficiency)" : "Raining (30% efficiency)";
-                    } else {
+                    // Determine more accurate reason based on skylight / view / weather
+                    if (level == null) {
                         reason = "No sunlight available";
+                    } else if (!hasViewOnSky(getBlockPos())) {
+                        reason = "Blocked by blocks above (no clear view to sky)";
+                    } else {
+                        int skyLight = level.getBrightness(LightLayer.SKY, getBlockPos().above());
+                        if (skyLight <= 0) {
+                            reason = "No skylight (darkness / underground)";
+                        } else if (level.isRaining()) {
+                            reason = level.isThundering() ? "Thunderstorm (reduced efficiency)" : "Raining (reduced efficiency)";
+                        } else {
+                            reason = "No sunlight available";
+                        }
                     }
                 } else {
                     reason = "Unknown issue";
@@ -233,16 +312,22 @@ public class SolarPanelBaseBE extends BlockEntity {
             String blockingIssue = "No clear view to sky";
             String tip = "Remove blocks above the panel";
 
-            // Check for specific obstructions
-            for (int i = 1; i <= 10; i++) {
-                BlockPos checkPos = worldPosition.above(i);
-                BlockState state = level.getBlockState(checkPos);
-                if (!state.isAir()) {
-                    blockingIssue = String.format("Blocked by %s at %d blocks above",
-                        state.getBlock().getName().getString(), i);
-                    tip = String.format("Remove the %s above the panel",
-                        state.getBlock().getName().getString());
-                    break;
+            // Use the same visibility logic as runtime: if hasViewOnSky returns true, it's not blocked
+            if (level != null && hasViewOnSky(worldPosition)) {
+                blockingIssue = "None (direct view to sky)";
+                tip = "";
+            } else if (level != null) {
+                for (int i = 1; i <= 10; i++) {
+                    BlockPos checkPos = worldPosition.above(i);
+                    BlockState state = level.getBlockState(checkPos);
+                    // treat as blocking only if the block is not air and does NOT propagate skylight
+                    if (!state.isAir() && !state.propagatesSkylightDown(level, checkPos)) {
+                        blockingIssue = String.format("Blocked by %s at %d blocks above",
+                            state.getBlock().getName().getString(), i);
+                        tip = String.format("Remove the %s above the panel",
+                            state.getBlock().getName().getString());
+                        break;
+                    }
                 }
             }
 
@@ -269,12 +354,12 @@ public class SolarPanelBaseBE extends BlockEntity {
         toRet.add(Component.literal("📋 MISSING BLOCKS:").withStyle(net.minecraft.ChatFormatting.YELLOW));
 
         if (structure != null && MiscUtil.structureMap.containsKey(structure.toString())) {
-            MiscUtil.getNeededBlocks(MiscUtil.structureMap.get(structure.toString())).forEach((string, integer) -> {
+            MiscUtil.getNeededBlocks(MiscUtil.structureMap.get(structure.toString())).forEach((string, integer) ->
                 toRet.add(Component.literal("  • ").withStyle(net.minecraft.ChatFormatting.GRAY)
                     .append(Component.literal(string).withStyle(net.minecraft.ChatFormatting.WHITE))
                     .append(Component.literal(": ").withStyle(net.minecraft.ChatFormatting.GRAY))
-                    .append(Component.literal(String.valueOf(integer)).withStyle(net.minecraft.ChatFormatting.RED)));
-            });
+                    .append(Component.literal(String.valueOf(integer)).withStyle(net.minecraft.ChatFormatting.RED)))
+            );
         } else {
             toRet.add(Component.literal("  • Structure data not available").withStyle(net.minecraft.ChatFormatting.GRAY));
         }
@@ -327,7 +412,7 @@ public class SolarPanelBaseBE extends BlockEntity {
     }
 
     @Override
-    protected void saveAdditional(CompoundTag pTag) {
+    protected void saveAdditional(@NotNull CompoundTag pTag) {
         super.saveAdditional(pTag);
 
         CompoundTag data = new CompoundTag();
@@ -345,7 +430,7 @@ public class SolarPanelBaseBE extends BlockEntity {
     }
 
     @Override
-    public void load(CompoundTag pTag) {
+    public void load(@NotNull CompoundTag pTag) {
         super.load(pTag);
         CompoundTag data = pTag.getCompound(VoidMiners.MODID);
         if (data.isEmpty())
@@ -386,7 +471,7 @@ public class SolarPanelBaseBE extends BlockEntity {
         
         // Ensure we have a valid energy handler even if setup wasn't called yet
         if (energyHandler == null) {
-            energyHandler = new ModEnergyStorage((long)ENERGY_CAPACITY, 0L, (long)ENERGY_CAPACITY, 0L);
+            energyHandler = new ModEnergyStorage(ENERGY_CAPACITY, 0L, ENERGY_CAPACITY, 0L);
         }
         
         setupEnergyStorage();
@@ -395,7 +480,7 @@ public class SolarPanelBaseBE extends BlockEntity {
     }
 
     @Override
-    public CompoundTag getUpdateTag() {
+    public @NotNull CompoundTag getUpdateTag() {
         CompoundTag tag = super.getUpdateTag();
         saveAdditional(tag);
         return tag;
@@ -434,9 +519,11 @@ public class SolarPanelBaseBE extends BlockEntity {
     }
 
     public void tick(Level pLevel, BlockPos pPos, BlockState pState, ResourceLocation structure, String name) {
-        if (getStructure() == null || this.name == null) {
-            setup(structure, name);
-        }
+        // Only run the logic on server to avoid client-side drift/visual-only updates.
+        if (pLevel != null && pLevel.isClientSide) return;
+         if (getStructure() == null || this.name == null) {
+             setup(structure, name);
+         }
 
         checkStructure(pLevel, pPos);
 
@@ -477,7 +564,39 @@ public class SolarPanelBaseBE extends BlockEntity {
             return;
         }
 
-        float solarEff = getSolarEfficiency();
+        // Early night check: if this is a normal dimension and it's night, force zero efficiency
+        float solarEff;
+        if (level != null) {
+            // Explicit safety: do not allow Overworld to be treated as always-day under any circumstances.
+            String dim = level.dimension().location().toString().toLowerCase();
+            if (dim.equals("minecraft:overworld") && !level.isDay()) {
+                solarEff = 0.0f;
+            } else {
+             boolean isAlwaysDayEarly = isAlwaysDayDimensionAt(level, pPos);
+             boolean isDayEarly = level.isDay();
+             if (!isAlwaysDayEarly && !isDayEarly) {
+                 solarEff = 0.0f;
+             } else {
+                 solarEff = getSolarEfficiency();
+             }
+            }
+         } else {
+             solarEff = getSolarEfficiency();
+         }
+
+        // Safety: enforce zero generation at night unless dimension is always-day (keeps previous guard)
+        if (level != null) {
+            boolean isAlwaysDayDimension = isAlwaysDayDimensionAt(level, pPos);
+
+            BlockPos abovePos = pPos.above();
+            boolean isDayNow = level.isDay();
+            int skyLightNow = level.getBrightness(LightLayer.SKY, abovePos);
+
+            if (!isAlwaysDayDimension && !isDayNow && skyLightNow < 15) {
+                solarEff = 0.0f;
+            }
+        }
+
         runtimeState.setLastEfficiency(solarEff);
         boolean energyFull = isEnergyHandlerFull();
         boolean working = !energyFull && solarEff > 0;
@@ -499,6 +618,19 @@ public class SolarPanelBaseBE extends BlockEntity {
         progress++;
         long energyGenerated = computeGenerationFromEfficiency(solarEff);
         runtimeState.setLastGeneration(energyGenerated);
+
+        // Final runtime guard: if it's night in a normal dimension, cancel generation
+        if (level != null && energyGenerated > 0) {
+            boolean isAlwaysDay = isAlwaysDayDimensionAt(level, pPos);
+            boolean isDayNow = level.isDay();
+            int skyNow = level.getBrightness(LightLayer.SKY, pPos.above());
+            if (!isAlwaysDay && !isDayNow && skyNow < 15) {
+                energyGenerated = 0;
+                runtimeState.setLastGeneration(0);
+                runtimeState.setLastEfficiency(0);
+            }
+        }
+
         if (energyGenerated > 0) {
             energyHandler.addEnergy(energyGenerated);
         }
@@ -529,17 +661,16 @@ public class SolarPanelBaseBE extends BlockEntity {
             LazyOptional<IEnergyStorage> cap = neighbor.getCapability(ForgeCapabilities.ENERGY, dir.getOpposite());
             if (!cap.isPresent()) continue;
 
-            IEnergyStorage receiver = cap.orElse(null);
-            if (receiver == null) continue;
+            long availableNow = energyHandler.getLongEnergyStored();
+            if (availableNow <= 0) break;
 
-            if (available <= 0) break;
-
-            int toSend = (int) Math.min(available, Integer.MAX_VALUE);
-            int accepted = receiver.receiveEnergy(toSend, false);
-            if (accepted > 0) {
-                energyHandler.removeEnergy(accepted);
-                available -= accepted;
-            }
+            int toSend = (int) Math.min(availableNow, Integer.MAX_VALUE);
+            cap.ifPresent(receiver -> {
+                int accepted = receiver.receiveEnergy(toSend, false);
+                if (accepted > 0) {
+                    energyHandler.removeEnergy(accepted);
+                }
+            });
         }
     }
 
@@ -581,6 +712,20 @@ public class SolarPanelBaseBE extends BlockEntity {
             return 0;
         }
 
+        // Final safety: if it's night in a normal dimension, do not generate at all
+        if (level != null) {
+            String dim = level.dimension().location().toString().toLowerCase();
+            // Overworld explicit block
+            if (dim.equals("minecraft:overworld") && !level.isDay()) return 0;
+
+            boolean isAlwaysDay = isAlwaysDayDimensionAt(level, worldPosition);
+            boolean isDayNow = level.isDay();
+            int skyNow = level.getBrightness(LightLayer.SKY, worldPosition.above());
+            if (!isAlwaysDay && !isDayNow && skyNow < 15) {
+                return 0;
+            }
+        }
+
         float generationModifier = 1.0f;
         float efficiencyModifier = 1.0f;
 
@@ -604,59 +749,82 @@ public class SolarPanelBaseBE extends BlockEntity {
     public float getSolarEfficiency() {
         if (level == null) return 0;
 
-        // Check if we're in void dimension
-        String dimensionName = level.dimension().location().toString();
-        boolean isVoidDimension = dimensionName.contains("void") || dimensionName.contains("voidminers");
+        // Dimension checks
+        String dimName = level.dimension().location().toString().toLowerCase();
+        // Explicit: Overworld must respect day/night even if heuristics/previous cache say otherwise
+        if (dimName.equals("minecraft:overworld") && !level.isDay()) return 0;
+        boolean isAlwaysDayDimension = isAlwaysDayDimensionAt(level, getBlockPos());
+        boolean isVoidDimension = isAlwaysDayDimension; // isAlwaysDayDimensionAt already checks name-based void detection
 
-        // Simple Minecraft time-based calculation
-        float efficiency = 100.0f;
+        // Void dimension keeps its special handling
+        if (isVoidDimension) {
+            if (!hasViewOnSky(getBlockPos())) return 0.0f;
+            float efficiency = 100.0f;
+            float weatherPenalty = 1.0f;
+            if (level.isRaining()) {
+                weatherPenalty = 0.3f;
+                if (level.isThundering()) weatherPenalty = 0.15f;
+                for (Map.Entry<BlockInWorld, ConfigLoader.SolarModifierConfig> entry : modifierMap.entrySet()) {
+                    float resistance = entry.getValue().weatherResistance();
+                    if (resistance >= 3.0f) { weatherPenalty = 1.0f; break; }
+                    else if (resistance > 1.0f) {
+                        float protectionBoost = (resistance - 1.0f);
+                        weatherPenalty = weatherPenalty * (1.0f + protectionBoost);
+                        weatherPenalty = Math.min(1.0f, weatherPenalty);
+                    }
+                }
+            }
+            efficiency *= weatherPenalty;
+            return Math.max(0, Math.min(100, efficiency));
+        }
 
-        // Day/Night cycle check
-        long timeOfDay = level.getDayTime() % 24000;
-        boolean isDaytime = timeOfDay >= 0 && timeOfDay < 12000; // 0-12000 is day, 12000-24000 is night
+        // Normal dimensions: require sky visibility
+        if (!hasViewOnSky(getBlockPos())) return 0.0f;
 
-        if (!isDaytime) {
-            // No generation at night
+        BlockPos above = getBlockPos().above();
+        long timeOfDay = level.getDayTime() % 24000L;
+        int skyLight = level.getBrightness(LightLayer.SKY, above);
+
+        // If skylight is zero, nothing to do
+        if (skyLight <= 0) return 0.0f;
+
+        // In non-always-day dimensions, strictly no generation at night
+        if (!isAlwaysDayDimension && !level.isDay()) {
             return 0.0f;
         }
 
-        // Calculate sun angle efficiency (highest at noon)
-        float dayProgress = timeOfDay / 12000.0f; // 0 to 1 during the day
-        float solarAngle = (float) Math.sin(dayProgress * Math.PI); // Peak at noon (0.5)
-        efficiency *= Math.max(0.3f, solarAngle); // Minimum 30% during dawn/dusk
-
-        // Sky light level - skip this check in void dimension
-        if (!isVoidDimension) {
-            int skyLight = level.getBrightness(LightLayer.SKY, getBlockPos().above());
-            if (skyLight < 15) {
-                efficiency *= (skyLight / 15.0f);
-            }
+        // Compute sunFactor: triangular peak at 6000 between 0..12000
+        float sunFactor;
+        if (isAlwaysDayDimension) {
+            // Treat always-day as full daylight curve (use skylight fraction instead of time)
+            sunFactor = 1.0f;
+        } else {
+            // timeOfDay is < 12000 here
+            float distance = Math.abs((float) timeOfDay - 6000f);
+            sunFactor = Math.max(0f, 1f - (distance / 6000f));
         }
-        // In void dimension, assume full sky light access if no blocks above
 
-        // Weather conditions
+        float efficiency = sunFactor * ((float) skyLight / 15.0f) * 100.0f;
+
+        // Apply weather penalties and modifier protections
         float weatherPenalty = 1.0f;
         if (level.isRaining()) {
-            weatherPenalty = 0.3f; // 30% efficiency in rain
-            if (level.isThundering()) {
-                weatherPenalty = 0.15f; // 15% efficiency in thunderstorm
-            }
+            weatherPenalty = 0.3f;
+            if (level.isThundering()) weatherPenalty = 0.15f;
 
-            // Apply weather resistance modifiers
             for (Map.Entry<BlockInWorld, ConfigLoader.SolarModifierConfig> entry : modifierMap.entrySet()) {
                 float resistance = entry.getValue().weatherResistance();
                 if (resistance >= 3.0f) {
-                    // Ultimate tier: complete weather immunity
                     weatherPenalty = 1.0f;
-                    break; // No need to check other modifiers
+                    break;
                 } else if (resistance > 1.0f) {
-                    // Other tiers: multiplicative boost
                     float protectionBoost = (resistance - 1.0f);
                     weatherPenalty = weatherPenalty * (1.0f + protectionBoost);
-                    weatherPenalty = Math.min(1.0f, weatherPenalty); // Cap at 100% efficiency
+                    weatherPenalty = Math.min(1.0f, weatherPenalty);
                 }
             }
         }
+
         efficiency *= weatherPenalty;
 
         return Math.max(0, Math.min(100, efficiency));
@@ -664,44 +832,41 @@ public class SolarPanelBaseBE extends BlockEntity {
 
 
     private boolean hasViewOnSky(BlockPos pos) {
-        // Special handling for void dimension
-        String dimensionName = level.dimension().location().toString();
+        if (level == null) return false;
+        // Special handling for void-like dimensions: if the dimension id contains 'void' treat specially.
+        String dimensionName = level.dimension().location().toString().toLowerCase();
         boolean isVoidDimension = dimensionName.contains("void") || dimensionName.contains("voidminers");
 
 
-        // In void dimension, just check for blocks above
+        // In void-like dimension, just check for solid obstructions directly above
         if (isVoidDimension) {
-            // Check for any obstructions above the panel
-            for (int i = 1; i <= 10; i++) {  // Check 10 blocks up
+            for (int i = 1; i <= 10; i++) {
                 BlockPos checkPos = pos.above(i);
                 BlockState state = level.getBlockState(checkPos);
-
                 if (!state.isAir()) {
                     return false;
                 }
             }
-            return true;  // No obstructions in void dimension
+            return true;
         }
 
-        // Normal dimension logic
-        BlockPos checkPos = pos.above();
+        // Normal dimension logic: use actual skylight reaching the panel. If skylight > 0 we consider it visible.
+        BlockPos above = pos.above();
+        int skyLightHere = level.getBrightness(LightLayer.SKY, above);
 
-        // Check the position directly above first
-        if (!level.canSeeSky(checkPos)) {
-            return false;
-        }
+        // If any skylight reaches the panel position, it's visible to sky (handles glass/custom transparent blocks)
+        if (skyLightHere > 0) return true;
 
-        // Check for any obstructions up to sky height
-        for (int i = 1; i < level.getMaxBuildHeight() - pos.getY(); i++) {
-            checkPos = pos.above(i);
+        // No skylight reached. Fall back to scanning for an actual solid obstruction to provide better tooltip info.
+        for (int i = 1; i <= 10; i++) {
+            BlockPos checkPos = pos.above(i);
             BlockState state = level.getBlockState(checkPos);
-
-            // If we hit a solid, non-transparent block, no sky access
             if (!state.isAir() && !state.propagatesSkylightDown(level, checkPos)) {
                 return false;
             }
         }
-        return true;
+
+        return false;
     }
 
     private boolean isEnergyHandlerFull() {
@@ -709,6 +874,8 @@ public class SolarPanelBaseBE extends BlockEntity {
     }
 
     public void drops() {
+        if (level == null) return;
+
         SimpleContainer container = new SimpleContainer(itemHandler.getSlots());
 
         for (int i = 0; i < itemHandler.getSlots(); i++) {
@@ -740,7 +907,7 @@ public class SolarPanelBaseBE extends BlockEntity {
         String expectedStructurePath = (structure != null ? structure.getPath() : null);
         String foundPatternPath = pattern.ID().getPath();
 
-        if (expectedStructurePath == null || !foundPatternPath.equals(expectedStructurePath)) {
+        if (!foundPatternPath.equals(expectedStructurePath)) {
             foundStructure = false;
             return;
         }
