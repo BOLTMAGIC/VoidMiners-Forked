@@ -641,6 +641,96 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
                 false,// Tier 9 (Ultimate tier)
                 Level.END
         ).save(pWriter);
+
+        // Upgrade item recipes (datagen)
+        // Tier 1: 8x Diamond around 1x Citrinetine
+        ShapedRecipeBuilder.shaped(
+                        RecipeCategory.MISC,
+                        ModItems.UPGRADE_MAX_STORAGE_T1.get(),
+                        1
+                )
+                .pattern("GGG")
+                .pattern("GDG")
+                .pattern("GGG")
+                .define('D', Items.DIAMOND_BLOCK)
+                .define('G', CrystalSet.CITRINETINE.CRYSTAL.get())
+                .unlockedBy("hasItem", has(CrystalSet.CITRINETINE.CRYSTAL.get()))
+                .save(pWriter);
+
+        // Tier 2: 8x Netherite around Tier1 upgrade
+        ShapedRecipeBuilder.shaped(
+                        RecipeCategory.MISC,
+                        ModItems.UPGRADE_MAX_STORAGE_T2.get(),
+                        1
+                )
+                .pattern("CTC")
+                .pattern("TST")
+                .pattern("CCC")
+                .define('S', Items.NETHERITE_BLOCK)
+                .define('T', ModItems.UPGRADE_MAX_STORAGE_T1.get())
+                .define('C', CrystalSet.CAERIUM.CRYSTAL.get())
+                .unlockedBy("hasItem", has(ModItems.UPGRADE_MAX_STORAGE_T1.get()))
+                .save(pWriter);
+
+        // Tier 3: requires 3x Tier2 (top row) + ultimate core center + nether stars fill remaining
+        ShapedRecipeBuilder.shaped(
+                        RecipeCategory.MISC,
+                        ModItems.UPGRADE_MAX_STORAGE_T3.get(),
+                        1
+                )
+                .pattern("CTC")
+                .pattern("TST")
+                .pattern("CCC")
+                .define('S', Items.NETHER_STAR)
+                .define('T', ModItems.UPGRADE_MAX_STORAGE_T2.get())
+                .define('C', ModItems.ULTIMATE_STELLAR_CORE.get())
+                .unlockedBy("hasItem", has(ModItems.UPGRADE_MAX_STORAGE_T2.get()))
+                .save(pWriter);
+
+        // Storage Upgrade recipes
+        ShapedRecipeBuilder.shaped(
+                        RecipeCategory.MISC,
+                        ModItems.UPGRADE_MAX_STORAGE_T1.get(),
+                        1
+                )
+                .pattern("GGG")
+                .pattern("GDG")
+                .pattern("GGG")
+                .define('D', Items.DIAMOND_BLOCK)
+                .define('G', CrystalSet.CITRINETINE.CRYSTAL.get())
+                .unlockedBy("hasItem", has(Items.DIAMOND))
+                .save(pWriter);
+
+        // T2: requires netherite, a mid-game crystal (VERDIUM), and T1 included
+        ShapedRecipeBuilder.shaped(
+                        RecipeCategory.MISC,
+                        ModItems.UPGRADE_MAX_STORAGE_T2.get(),
+                        1
+                )
+                .pattern("GTG")
+                .pattern("TNT")
+                .pattern("GGG")
+                .define('N', Items.NETHERITE_BLOCK)
+                .define('G', CrystalSet.CAERIUM.CRYSTAL.get())
+                .define('T', ModItems.UPGRADE_MAX_STORAGE_T1.get())
+                .unlockedBy("hasItem", has(Items.NETHERITE_INGOT))
+                .save(pWriter);
+
+        // T3: requires 3x T2 (placed across the pattern), rosarium crystal (end-game gem) and nether stars to fill remaining
+        ShapedRecipeBuilder.shaped(
+                        RecipeCategory.MISC,
+                        ModItems.UPGRADE_MAX_STORAGE_T3.get(),
+                        1
+                )
+                .pattern("RTR")
+                .pattern("TNT")
+                .pattern("RRR")
+                .define('T', ModItems.UPGRADE_MAX_STORAGE_T2.get())
+                .define('N', Items.NETHER_STAR)
+                .define('R', CrystalSet.ULTIMATE.CRYSTAL.get())
+                .unlockedBy("hasItem", has(CrystalSet.ROSARIUM.CRYSTAL.get()))
+                .save(pWriter);
+
     }
 
 }

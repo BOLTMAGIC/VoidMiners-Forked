@@ -1,5 +1,23 @@
 # Changelog
 
+## [1.20.1-1.9.25] - 2026-01-01
+- Added: Storage Upgrade T1 / T2 / T3 (Storage Upgrade Items).
+  - Storage Upgrades increase the miner controller's maximum number of output slots: T1 = +3 slots, T2 = +9 slots, T3 = +27 slots.
+  - Installation: Right-click the miner controller with an upgrade to apply it directly (the item is not placed into the controller's inventory).
+  - Rules: Only one upgrade can be active; upgrades are not cumulative. Installing a higher-tier upgrade replaces a lower-tier upgrade and returns the previous upgrade to the player (the mod will first attempt to add it to the player's inventory, otherwise it will drop the item into the world).
+  - Restrictions: A lower-tier upgrade cannot be applied to a miner that already has a higher-tier upgrade installed (the action will be rejected).
+  - Updated project metadata to `1.20.1-1.9.25` for this release build.
+
+## [1.20.1-1.9.24] - 2025-12-31
+- Fixed the Void Miners not forming.
+- Updated project metadata to `1.20.1-1.9.24` for this release build.
+
+## [1.20.1-1.9.23] - 2025-10-24
+- Added: Solar Panels (tiered solar controllers and crystals).
+  - Solar Panels provide passive power to solar panel controllers; multiple tiers exist and scale in generation and recipe cost.
+  - Recipes: Solar crystals and crystal blocks are craftable via shaped recipes; higher tier crystals require the previous tier plus additional premium materials.
+- Updated project metadata to `1.20.1-1.9.23` for this release build.
+
 ## [1.20.1-1.9.22] - 2025-10-24
 - Added debug traces around controller state changes so dimension locks, structure loss, energy shortages, and inventory stalls surface in logs immediately.
 - Updated project metadata to `1.20.1-1.9.22` for this release build.

@@ -29,6 +29,8 @@ import net.minecraftforge.common.capabilities.Capability;
 import net.minecraftforge.common.capabilities.ForgeCapabilities;
 import net.minecraftforge.common.util.LazyOptional;
 import net.minecraftforge.items.ItemStackHandler;
+import net.minecraftforge.items.wrapper.CombinedInvWrapper;
+import net.minecraftforge.registries.ForgeRegistries;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.mangorage.mangomultiblock.core.manager.MultiBlockManager;
@@ -46,14 +48,30 @@ public class ControllerBaseBE extends BlockEntity {
 
     private ModEnergyStorage energyHandler = new ModEnergyStorage(ENERGY_CAPACITY, ENERGY_CAPACITY, 0, 0);
 
-    private final ItemStackHandler itemHandler = new ItemStackHandler(9) {
+    // Default output slots (base). Will be resized by upgrades.
+    private static final int BASE_OUTPUT_SLOTS = 9;
+
+    // itemHandler can be recreated when upgrades change; keep non-final
+    private ItemStackHandler itemHandler = createItemHandler(BASE_OUTPUT_SLOTS);
+
+    // Upgrade slots (hidden from production; used to calculate storage increase)
+    private final ItemStackHandler upgradeHandler = new ItemStackHandler(3) {
         @Override
         protected void onContentsChanged(int slot) {
             super.onContentsChanged(slot);
+            // Recalculate storage when upgrades change
+            ControllerBaseBE.this.recalculateStorageFromUpgrades();
             ControllerBaseBE.this.runtimeState.markInventoryChanged();
-            ControllerBaseBE.this.level.sendBlockUpdated(getBlockPos(), getBlockState(), getBlockState(), 3);
+            if (ControllerBaseBE.this.level != null) {
+                ControllerBaseBE.this.level.sendBlockUpdated(getBlockPos(), getBlockState(), getBlockState(), 3);
+            }
         }
     };
+
+    // LazyOptionals for capabilities
+    private LazyOptional<ModEnergyStorage> lazyEnergyHandler = LazyOptional.empty();
+    private LazyOptional<ItemStackHandler> lazyItemHandler = LazyOptional.empty(); // used for internal item handler cast
+    private LazyOptional<net.minecraftforge.items.IItemHandler> lazyCombinedItemHandler = LazyOptional.empty();
 
     public boolean foundStructure = false;
     private int progress = 0;
@@ -65,6 +83,9 @@ public class ControllerBaseBE extends BlockEntity {
     private ResourceLocation structure;
     private String name;
 
+    // Applied upgrade tier stored as NBT (0 = none, 1 = T1, 2 = T2, 3 = T3)
+    private int appliedUpgradeTier = 0;
+
     public boolean active;
     public boolean working;
 
@@ -72,11 +93,69 @@ public class ControllerBaseBE extends BlockEntity {
     private final ControllerDiagnosticsLogger diagnosticsLogger = new ControllerDiagnosticsLogger();
     private final ControllerInventoryHelper inventoryHelper = new ControllerInventoryHelper(this);
 
-    private LazyOptional<ModEnergyStorage> lazyEnergyHandler = LazyOptional.empty();
-    private LazyOptional<ItemStackHandler> lazyItemHandler = LazyOptional.empty();
-
     public ControllerBaseBE(BlockPos pPos, BlockState pBlockState) {
         super(ModBlockEntities.CONTROLLER_BASE_BE.get(), pPos, pBlockState);
+    }
+
+    // Helper to create item handlers with correct callback
+    private static ItemStackHandler createItemHandler(int slots) {
+        return new ItemStackHandler(slots) {
+            @Override
+            protected void onContentsChanged(int slot) {
+                super.onContentsChanged(slot);
+                // Note: we cannot reference outer instance here; caller should set their own handler or use wrapper method
+            }
+        };
+    }
+
+    // Recreate itemHandler with a new slot count, migrating items
+    private void replaceItemHandler(int newSlots) {
+        ItemStackHandler newHandler = new ItemStackHandler(newSlots) {
+            @Override
+            protected void onContentsChanged(int slot) {
+                super.onContentsChanged(slot);
+                ControllerBaseBE.this.runtimeState.markInventoryChanged();
+                if (ControllerBaseBE.this.level != null) {
+                    ControllerBaseBE.this.level.sendBlockUpdated(getBlockPos(), getBlockState(), getBlockState(), 3);
+                }
+            }
+        };
+
+        // Copy existing stacks into new handler
+        int copySlots = Math.min(itemHandler.getSlots(), newHandler.getSlots());
+        for (int i = 0; i < copySlots; i++) {
+            newHandler.setStackInSlot(i, itemHandler.getStackInSlot(i));
+        }
+
+        this.itemHandler = newHandler;
+
+        // Update lazy references so external capability and internal getter reflect the new handler
+        if (this.lazyItemHandler != null) this.lazyItemHandler.invalidate();
+        this.lazyItemHandler = LazyOptional.of(() -> this.itemHandler);
+
+        // Invalidate combined handler so it will be recreated on demand
+        if (this.lazyCombinedItemHandler != null) this.lazyCombinedItemHandler.invalidate();
+        this.lazyCombinedItemHandler = LazyOptional.empty();
+    }
+
+    // Calculate new output slots from upgrades and replace handler if needed
+    private void recalculateStorageFromUpgrades() {
+        // Read applied tier from BE (stored as NBT). This represents the active upgrade
+        int tier = this.appliedUpgradeTier;
+        ConfigLoader cfg = ConfigLoader.getInstance();
+        int extraSlots = 0;
+        if (tier == 3) {
+            extraSlots = cfg.UPGRADE_T3_SLOTS;
+        } else if (tier == 2) {
+            extraSlots = cfg.UPGRADE_T2_SLOTS;
+        } else if (tier == 1) {
+            extraSlots = cfg.UPGRADE_T1_SLOTS;
+        }
+
+        int desiredSlots = BASE_OUTPUT_SLOTS + extraSlots;
+        if (desiredSlots != itemHandler.getSlots()) {
+            replaceItemHandler(desiredSlots);
+        }
     }
 
     public void setup(ResourceLocation structure, String name) {
@@ -117,6 +196,9 @@ public class ControllerBaseBE extends BlockEntity {
         CompoundTag data = new CompoundTag();
         if (energyHandler != null) data.put("energy", energyHandler.serializeNBT());
         data.put("items", itemHandler.serializeNBT());
+        data.put("upgrades", upgradeHandler.serializeNBT());
+        // Persist applied upgrade tier
+        data.putInt("appliedUpgradeTier", this.appliedUpgradeTier);
         data.putInt("progress", this.progress);
         if (name != null) data.putString("name", this.name);
         data.putBoolean("active", active);
@@ -138,8 +220,21 @@ public class ControllerBaseBE extends BlockEntity {
         }
 
         if (data.contains("items")) {
+            // Load into current handler; if different size desired we will recalc after loading upgrades
             itemHandler.deserializeNBT(data.getCompound("items"));
         }
+
+        if (data.contains("upgrades")) {
+            upgradeHandler.deserializeNBT(data.getCompound("upgrades"));
+        }
+
+        // Load applied upgrade tier (if present)
+        if (data.contains("appliedUpgradeTier")) {
+            this.appliedUpgradeTier = data.getInt("appliedUpgradeTier");
+        }
+
+        // After loading upgrades, recalculate storage and migrate items if needed
+        recalculateStorageFromUpgrades();
 
         if (data.contains("progress")) {
             progress = data.getInt("progress");
@@ -169,6 +264,11 @@ public class ControllerBaseBE extends BlockEntity {
         setupEnergyStorage();
         lazyEnergyHandler = LazyOptional.of(() -> energyHandler);
         lazyItemHandler = LazyOptional.of(() -> itemHandler);
+        // Provide combined item handler lazily; create on demand
+        lazyCombinedItemHandler = LazyOptional.of(() -> new CombinedInvWrapper(itemHandler, upgradeHandler));
+        // Ensure the active itemHandler instance has correct onContentsChanged behaviour
+        // (recreate handler with controller-aware callback)
+        replaceItemHandler(itemHandler.getSlots());
     }
 
     @Override
@@ -191,7 +291,11 @@ public class ControllerBaseBE extends BlockEntity {
         }
 
         if (cap == ForgeCapabilities.ITEM_HANDLER) {
-            return lazyItemHandler.cast();
+            // Expose combined handler (outputs + upgrade slots) to external callers
+            if (lazyCombinedItemHandler == null || !lazyCombinedItemHandler.isPresent()) {
+                lazyCombinedItemHandler = LazyOptional.of(() -> new CombinedInvWrapper(itemHandler, upgradeHandler));
+            }
+            return lazyCombinedItemHandler.cast();
         }
 
         return super.getCapability(cap);
@@ -204,7 +308,10 @@ public class ControllerBaseBE extends BlockEntity {
         }
 
         if (cap == ForgeCapabilities.ITEM_HANDLER) {
-            return lazyItemHandler.cast();
+            if (lazyCombinedItemHandler == null || !lazyCombinedItemHandler.isPresent()) {
+                lazyCombinedItemHandler = LazyOptional.of(() -> new CombinedInvWrapper(itemHandler, upgradeHandler));
+            }
+            return lazyCombinedItemHandler.cast();
         }
 
         return super.getCapability(cap, side);
@@ -449,6 +556,10 @@ public class ControllerBaseBE extends BlockEntity {
         return itemHandler;
     }
 
+    public ItemStackHandler getUpgradeHandlerInternal() {
+        return upgradeHandler;
+    }
+
     int getCurrentProgress() {
         return progress;
     }
@@ -474,9 +585,22 @@ public class ControllerBaseBE extends BlockEntity {
         super.invalidateCaps();
         lazyEnergyHandler.invalidate();
         lazyItemHandler.invalidate();
+        lazyCombinedItemHandler.invalidate();
     }
 
     public ResourceLocation getStructure() {
         return structure;
+    }
+
+    public int getAppliedUpgradeTier() {
+        return appliedUpgradeTier;
+    }
+
+    public void setAppliedUpgradeTier(int tier) {
+        this.appliedUpgradeTier = tier;
+        // Recalculate storage immediately when tier changes
+        recalculateStorageFromUpgrades();
+        // mark changed so NBT syncs
+        setChanged();
     }
 }

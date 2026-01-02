@@ -1,0 +1,18 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    "CTC",
+    "TST",
+    "CCC"
+  ],
+  "key": {
+    "S": { "item": "minecraft:netherite_block" },
+    "T": { "item": "voidminers:upgrade_max_storage_t1" },
+    "C": { "item": "voidminers:caerium" }
+  },
+  "result": {
+    "item": "voidminers:upgrade_max_storage_t2",
+    "count": 1
+  }
+}
+

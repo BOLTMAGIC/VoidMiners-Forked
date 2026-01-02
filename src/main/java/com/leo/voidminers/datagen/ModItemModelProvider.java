@@ -20,6 +20,11 @@ public class ModItemModelProvider extends ItemModelProvider {
     protected void registerModels() {
         simpleItem(ModItems.STRUCTURE_HELPER);
 
+        // Register storage upgrade item models
+        simpleItem("upgrade_max_storage_t1");
+        simpleItem("upgrade_max_storage_t2");
+        simpleItem("upgrade_max_storage_t3");
+
         for (CrystalSet set : CrystalSet.sets()) {
             if (set.CRYSTAL != null) {
                 simpleItem(

@@ -32,3 +32,5 @@ gradlew
 /bin
 .claude
 %~I)
+/src/test/
+/src/generated/
