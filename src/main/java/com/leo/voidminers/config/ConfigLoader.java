@@ -187,6 +187,16 @@ public class ConfigLoader {
         ))
     );
 
+    // Configurable upgrade slot values (can be changed in the config file)
+    @Expose
+    public int UPGRADE_T1_SLOTS = 3;
+
+    @Expose
+    public int UPGRADE_T2_SLOTS = 9;
+
+    @Expose
+    public int UPGRADE_T3_SLOTS = 27;
+
     public void load() {
         Gson gson = new GsonBuilder()
                 .excludeFieldsWithoutExposeAnnotation()

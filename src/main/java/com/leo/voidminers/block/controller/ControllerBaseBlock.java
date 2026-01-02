@@ -3,11 +3,14 @@ package com.leo.voidminers.block.controller;
 import com.leo.voidminers.block.base.BaseTransparentBlock;
 import com.leo.voidminers.block.controller.entity.ControllerBaseBE;
 import com.leo.voidminers.util.ShapeUtil;
+import com.leo.voidminers.init.ModItems;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraftforge.registries.ForgeRegistries;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
+import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
@@ -65,6 +68,66 @@ public class ControllerBaseBlock extends BaseTransparentBlock implements EntityB
         if (pPlayer.isCrouching()) {
             blockEntity.updateShowStructure();
             return InteractionResult.CONSUME;
+        }
+
+        // If player holds an upgrade item, attempt to insert it into the upgrade slots
+        ItemStack held = pPlayer.getItemInHand(pHand);
+        if (!held.isEmpty()) {
+            ResourceLocation key = ForgeRegistries.ITEMS.getKey(held.getItem());
+            String id = key != null ? key.toString() : "";
+
+            boolean isUpgrade = id.endsWith("upgrade_max_storage_t1")
+                || id.endsWith("upgrade_max_storage_t2")
+                || id.endsWith("upgrade_max_storage_t3");
+
+            if (isUpgrade) {
+                // Server-side handling: determine tier
+                int tier = id.endsWith("upgrade_max_storage_t3") ? 3 : id.endsWith("upgrade_max_storage_t2") ? 2 : 1;
+
+                int current = blockEntity.getAppliedUpgradeTier();
+                if (current == tier) {
+                    pPlayer.displayClientMessage(Component.literal("Upgrade already applied"), true);
+                    return InteractionResult.CONSUME;
+                }
+
+                // Prevent placing a smaller upgrade into a miner that already has a higher-tier installed
+                if (current > tier) {
+                    pPlayer.displayClientMessage(Component.literal("Cannot apply lower-tier upgrade while a higher-tier upgrade is installed"), true);
+                    return InteractionResult.CONSUME;
+                }
+
+                // Prepare previous upgrade stack to return to player (if any)
+                ItemStack previousStack = ItemStack.EMPTY;
+                if (current == 1) previousStack = new ItemStack(ModItems.UPGRADE_MAX_STORAGE_T1.get());
+                if (current == 2) previousStack = new ItemStack(ModItems.UPGRADE_MAX_STORAGE_T2.get());
+                if (current == 3) previousStack = new ItemStack(ModItems.UPGRADE_MAX_STORAGE_T3.get());
+
+                // Apply the new upgrade
+                blockEntity.setAppliedUpgradeTier(tier);
+
+                // consume one item from hand (unless creative)
+                if (!pPlayer.getAbilities().instabuild) {
+                    held.shrink(1);
+                    pPlayer.setItemInHand(pHand, held);
+                }
+
+                // Try to give previous upgrade back to player's inventory; otherwise spawn in world
+                if (!previousStack.isEmpty()) {
+                    boolean added = pPlayer.getInventory().add(previousStack);
+                    if (!added) {
+                        ItemEntity drop = new ItemEntity(pLevel, pPlayer.getX(), pPlayer.getY(), pPlayer.getZ(), previousStack);
+                        pLevel.addFreshEntity(drop);
+                    }
+                }
+
+                // Notify clients
+                if (blockEntity.getLevel() != null) {
+                    blockEntity.getLevel().sendBlockUpdated(pPos, pState, pState, 3);
+                }
+
+                pPlayer.displayClientMessage(Component.literal("Upgrade applied: T" + tier), true);
+                return InteractionResult.CONSUME;
+            }
         }
 
         for (Component component : blockEntity.getInteractionTooltip()) {

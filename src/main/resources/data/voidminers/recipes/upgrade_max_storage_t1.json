@@ -1,0 +1,16 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    "GGG",
+    "GDG",
+    "GGG"
+  ],
+  "key": {
+    "D": { "item": "minecraft:diamond_block" },
+    "G": { "item": "voidminers:citrinetine" }
+  },
+  "result": {
+    "item": "voidminers:upgrade_max_storage_t1",
+    "count": 1
+  }
+}
