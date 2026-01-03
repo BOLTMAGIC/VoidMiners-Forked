@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.20.1-1.9.25.2] - 2026-01-03
+- Fixed: Prevent multiple executions of miner and solar panel BlockEntities within the same world-tick when external mods (e.g. Torcherino, Block Booster) attempt to accelerate ticks.
+
+## [1.20.1-1.9.25.1] - 2026-01-02
+- Fixed: ja_jp and ru_ru localization files missing entries for Storage Upgrade items.
+
 ## [1.20.1-1.9.25] - 2026-01-01
 - Added: Storage Upgrade T1 / T2 / T3 (Storage Upgrade Items).
   - Storage Upgrades increase the miner controller's maximum number of output slots: T1 = +3 slots, T2 = +9 slots, T3 = +27 slots.
