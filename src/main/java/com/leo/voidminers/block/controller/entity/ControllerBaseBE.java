@@ -93,6 +93,9 @@ public class ControllerBaseBE extends BlockEntity {
     private final ControllerDiagnosticsLogger diagnosticsLogger = new ControllerDiagnosticsLogger();
     private final ControllerInventoryHelper inventoryHelper = new ControllerInventoryHelper(this);
 
+    // Per-instance guard to prevent multiple executions inside the same world tick (e.g. from booster mods)
+    private long lastProcessedGameTime = Long.MIN_VALUE;
+
     public ControllerBaseBE(BlockPos pPos, BlockState pBlockState) {
         super(ModBlockEntities.CONTROLLER_BASE_BE.get(), pPos, pBlockState);
     }
@@ -318,8 +321,17 @@ public class ControllerBaseBE extends BlockEntity {
     }
 
     public void tick(Level pLevel, BlockPos pPos, BlockState pState, ResourceLocation structure, String name) {
+        // Only run on server side to avoid client-side drift / visual-only updates
+        if (pLevel != null && pLevel.isClientSide) return;
         if (getStructure() == null) {
             setup(structure, name);
+        }
+
+        // Per-tile guard: prevent multiple executions in the same world tick (e.g. from booster mods)
+        if (pLevel != null) {
+            long gameTime = pLevel.getGameTime();
+            if (this.lastProcessedGameTime == gameTime) return;
+            this.lastProcessedGameTime = gameTime;
         }
 
         checkStructure(pLevel, pPos);

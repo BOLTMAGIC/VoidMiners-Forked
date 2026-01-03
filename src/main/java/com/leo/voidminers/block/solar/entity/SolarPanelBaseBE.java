@@ -81,6 +81,9 @@ public class SolarPanelBaseBE extends BlockEntity {
     // Use a high threshold to avoid transient/edge-case detection (e.g. 200 ticks ~10 seconds)
     private static final int ALWAYS_DAY_CONFIRM_THRESHOLD = 200;
 
+    // Per-instance guard to prevent multiple executions inside the same world tick (e.g. from booster mods)
+    private long lastProcessedGameTime = Long.MIN_VALUE;
+
     /**
      * Strict detection for always-day dimensions:
      * - Explicitly accept dimension ids containing "void"/"voidminers".
@@ -525,6 +528,13 @@ public class SolarPanelBaseBE extends BlockEntity {
              setup(structure, name);
          }
 
+        // Per-tile guard: prevent multiple executions in the same world tick (e.g. from booster mods)
+        if (pLevel != null) {
+            long gameTime = pLevel.getGameTime();
+            if (this.lastProcessedGameTime == gameTime) return;
+            this.lastProcessedGameTime = gameTime;
+        }
+
         checkStructure(pLevel, pPos);
 
         boolean dimensionAllowed = this.name == null || ConfigLoader.getInstance().isSolarDimensionAllowed(pLevel.dimension(), this.name);
@@ -783,10 +793,9 @@ public class SolarPanelBaseBE extends BlockEntity {
 
         BlockPos above = getBlockPos().above();
         long timeOfDay = level.getDayTime() % 24000L;
-        int skyLight = level.getBrightness(LightLayer.SKY, above);
 
         // If skylight is zero, nothing to do
-        if (skyLight <= 0) return 0.0f;
+        if (level.getBrightness(LightLayer.SKY, above) <= 0) return 0.0f;
 
         // In non-always-day dimensions, strictly no generation at night
         if (!isAlwaysDayDimension && !level.isDay()) {
@@ -804,7 +813,7 @@ public class SolarPanelBaseBE extends BlockEntity {
             sunFactor = Math.max(0f, 1f - (distance / 6000f));
         }
 
-        float efficiency = sunFactor * ((float) skyLight / 15.0f) * 100.0f;
+        float efficiency = sunFactor * ((float) level.getBrightness(LightLayer.SKY, above) / 15.0f) * 100.0f;
 
         // Apply weather penalties and modifier protections
         float weatherPenalty = 1.0f;
