@@ -529,7 +529,8 @@ public class SolarPanelBaseBE extends BlockEntity {
          }
 
         // Per-tile guard: prevent multiple executions in the same world tick (e.g. from booster mods)
-        if (pLevel != null) {
+        // Respect config: if ALLOW_TICK_ACCELERATION_MULTIBLOCKS == true, skip the guard and allow external tick-acceleration.
+        if (pLevel != null && !ConfigLoader.getInstance().ALLOW_TICK_ACCELERATION_MULTIBLOCKS) {
             long gameTime = pLevel.getGameTime();
             if (this.lastProcessedGameTime == gameTime) return;
             this.lastProcessedGameTime = gameTime;

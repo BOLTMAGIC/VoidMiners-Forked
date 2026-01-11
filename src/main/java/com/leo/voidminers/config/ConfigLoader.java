@@ -38,6 +38,11 @@ public class ConfigLoader {
     @Expose
     public boolean ALLOW_NO_ENERGY_SOLAR_PANELS = false;
 
+    // New option: allow tick-acceleration for multiblocks (e.g. Block Booster/Torcherino).
+    // Default: false -> Multiblocks will NOT be executed multiple times per game-tick by external tick-acceleration.
+    @Expose
+    public boolean ALLOW_TICK_ACCELERATION_MULTIBLOCKS = false;
+
     @Expose
     public DimensionControl MINER_DIMENSION_SETTINGS = new DimensionControl();
 
