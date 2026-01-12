@@ -2,15 +2,14 @@ package com.leo.voidminers.config;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
 import com.google.gson.JsonSyntaxException;
 import com.google.gson.annotations.Expose;
-import com.google.gson.stream.JsonReader;
 import com.leo.voidminers.util.MapUtil;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.level.block.Block;
-import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.level.block.state.pattern.BlockInWorld;
 import net.minecraft.world.level.Level;
 import net.minecraftforge.fml.loading.FMLPaths;
 import net.minecraftforge.registries.ForgeRegistries;
@@ -130,7 +129,7 @@ public class ConfigLoader {
         MapUtil.createEntry("rubetine", new SolarPanelConfig(5000000, 100, 20,
             MapUtil.of(
                 MapUtil.createEntry("efficiency", new SolarModifierConfig(1.0f, 0.85f, 1.0f, Arrays.asList("§bEfficiency Boost: §f+15%"))),
-                MapUtil.createEntry("weather_resistance", new SolarModifierConfig(1.0f, 1.0f, 1.17f, Arrays.asList("§9Weather Protection: §f+17%")))
+                MapUtil.createEntry("weather_resistance", new SolarModifierConfig(1.0f, 1.0f, 1.0f, Arrays.asList("§9Weather Protection: §f+17%")))
             ),
             Arrays.asList("§6RUBETINE SOLAR PANEL", "§eStored energy: §f0 FE/§65.00 MFE", "§9Capacity: §f5.00 MFE", "§aGeneration: §f20 FE/t")
         )),
@@ -216,16 +215,10 @@ public class ConfigLoader {
             if (!file.exists()) {
                 saveDefaultConfig(file, gson);
             } else {
-                String jsonContent = new String(java.nio.file.Files.readAllBytes(file.toPath()));
-                jsonContent = jsonContent.replace("�", "§")
-                        .replace("\\u00a7", "§");
-
-                INSTANCE = gson.fromJson(jsonContent, ConfigLoader.class);
-                if (INSTANCE == null) {
-                    throw new JsonSyntaxException("Parsed configuration is null.");
-                }
+                // Use the merge logic to preserve user settings while adding new defaults
+                mergeDefaultConfig(file, gson);
             }
-        } catch (JsonSyntaxException | IOException e) {
+        } catch (JsonSyntaxException e) {
             saveDefaultConfig(file, gson);
         }
     }
@@ -593,6 +586,66 @@ public class ConfigLoader {
                     buf.writeUtf(line);
                 }
             }
+        }
+    }
+
+    private void mergeJsonObjects(JsonObject target, JsonObject source) {
+        for (Map.Entry<String, JsonElement> entry : source.entrySet()) {
+            String key = entry.getKey();
+            JsonElement value = entry.getValue();
+
+            if (value.isJsonObject()) {
+                // If the value is a nested object, recursively merge
+                JsonObject nestedTarget = target.has(key) && target.get(key).isJsonObject()
+                        ? target.getAsJsonObject(key)
+                        : null;
+                if (nestedTarget == null) {
+                    nestedTarget = new JsonObject();
+                    target.add(key, nestedTarget);
+                }
+                mergeJsonObjects(nestedTarget, value.getAsJsonObject());
+            } else {
+                // For non-object values, only add the value if it's missing in the target
+                if (!target.has(key)) {
+                    target.add(key, value);
+                }
+            }
+        }
+    }
+
+    private void mergeDefaultConfig(File file, Gson gson) {
+        try {
+            // Read existing config as text and normalize section sign escapes
+            String existingContent = new String(java.nio.file.Files.readAllBytes(file.toPath()));
+            existingContent = existingContent.replace("�", "§")
+                    .replace("\\u00a7", "§");
+
+            JsonObject existingConfig = gson.fromJson(existingContent, JsonObject.class);
+
+            // Create default config JSON from a fresh ConfigLoader instance
+            StringWriter defaultConfigWriter = new StringWriter();
+            gson.toJson(new ConfigLoader(), defaultConfigWriter);
+            JsonObject defaultConfig = gson.fromJson(defaultConfigWriter.toString(), JsonObject.class);
+
+            // Merge default config into existing config (only add missing keys)
+            mergeJsonObjects(existingConfig, defaultConfig);
+
+            // Convert merged config back to JSON string
+            String mergedJson = gson.toJson(existingConfig);
+
+            // Ensure INSTANCE reflects the merged config (use unescaped § for parsing)
+            String mergedJsonForParse = mergedJson.replace("\\u00a7", "§");
+            INSTANCE = gson.fromJson(mergedJsonForParse, ConfigLoader.class);
+
+            // Write merged config back to file, escaping section sign as before
+            String toWrite = mergedJson.replace("§", "\\u00a7");
+            try (FileWriter writer = new FileWriter(file)) {
+                writer.write(toWrite);
+            }
+        } catch (IOException | JsonSyntaxException e) {
+            // Fallback: overwrite with defaults
+            System.err.println("Failed to merge config, falling back to defaults: " + e.getMessage());
+            saveDefaultConfig(file, gson);
         }
     }
 }
