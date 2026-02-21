@@ -39,9 +39,9 @@ public class SolarPanelRenderer implements BlockEntityRenderer<SolarPanelBaseBE>
         if (!MiscUtil.structureMap.containsKey(structure)) return;
 
         int offset = MiscUtil.structureMap.get(structure).get(0).size() / 2;
-
+        int yOffset = MiscUtil.structureMap.get(structure).size();
         pose.pushPose();
-        pose.translate(-offset, 1, -offset);
+        pose.translate(-offset, yOffset, -offset);
         pose.pushPose();
         pose.mulPose(Axis.ZN.rotationDegrees(90));
 
