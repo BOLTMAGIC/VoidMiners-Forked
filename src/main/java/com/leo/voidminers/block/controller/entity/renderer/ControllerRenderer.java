@@ -17,18 +17,20 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.client.model.data.ModelData;
+import org.jetbrains.annotations.NotNull;
 import org.joml.Vector3f;
 
 import java.util.List;
 
 public class ControllerRenderer implements BlockEntityRenderer<ControllerBaseBE> {
 
-    public ControllerRenderer(BlockEntityRendererProvider.Context context) {
+    public ControllerRenderer(@SuppressWarnings("unused") BlockEntityRendererProvider.Context context) {
     }
 
     @Override
-    public void render(ControllerBaseBE pBlockEntity, float pPartialTick, PoseStack pose, MultiBufferSource pBuffer, int pPackedLight, int pPackedOverlay) {
+    public void render(ControllerBaseBE pBlockEntity, float pPartialTick, @NotNull PoseStack pose, @NotNull MultiBufferSource pBuffer, int pPackedLight, int pPackedOverlay) {
         if (pBlockEntity.active) {
+            assert pBlockEntity.getLevel() != null;
             long gameTime = pBlockEntity.getLevel().getGameTime();
             float f = (float) Math.floorMod(gameTime, 40) + pPartialTick;
 
@@ -51,7 +53,10 @@ public class ControllerRenderer implements BlockEntityRenderer<ControllerBaseBE>
 
         if (!MiscUtil.structureMap.containsKey(structure)) return;
 
-        int offset = MiscUtil.structureMap.get(structure).get(0).size() / 2;
+        List<List<List<BlockState>>> blocks = MiscUtil.structureMap.get(structure);
+        if (blocks == null || blocks.isEmpty() || blocks.get(0).isEmpty()) return;
+
+        int offset = blocks.get(0).get(0).size() / 2;
 
         pose.pushPose();
         pose.translate(-offset, 1, -offset);
@@ -59,7 +64,6 @@ public class ControllerRenderer implements BlockEntityRenderer<ControllerBaseBE>
         pose.mulPose(Axis.ZN.rotationDegrees(90));
 
         //TODO Find a better way to do this, it's performance intensive doing 3 loops each render tick
-        List<List<List<BlockState>>> blocks = MiscUtil.structureMap.get(structure);
 
         for (int x = 0; x < blocks.size(); x++) {
             List<List<BlockState>> b2 = blocks.get(x);
@@ -93,6 +97,7 @@ public class ControllerRenderer implements BlockEntityRenderer<ControllerBaseBE>
 
         BlockRenderDispatcher blockRenderer = minecraft.getBlockRenderer();
 
+        assert minecraft.level != null;
         blockRenderer.renderSingleBlock(
             state,
             pose,
@@ -151,7 +156,7 @@ public class ControllerRenderer implements BlockEntityRenderer<ControllerBaseBE>
     }
 
     @Override
-    public boolean shouldRenderOffScreen(ControllerBaseBE pBlockEntity) {
+    public boolean shouldRenderOffScreen(@NotNull ControllerBaseBE pBlockEntity) {
         return true;
     }
 
@@ -161,7 +166,7 @@ public class ControllerRenderer implements BlockEntityRenderer<ControllerBaseBE>
     }
 
     @Override
-    public boolean shouldRender(ControllerBaseBE pBlockEntity, Vec3 pCameraPos) {
+    public boolean shouldRender(ControllerBaseBE pBlockEntity, @NotNull Vec3 pCameraPos) {
         return pBlockEntity.getBlockPos().getCenter().distanceTo(pCameraPos) <= 100;
     }
 }
