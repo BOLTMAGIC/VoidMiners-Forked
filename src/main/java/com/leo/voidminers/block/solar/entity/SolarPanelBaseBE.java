@@ -34,13 +34,7 @@ import org.mangorage.mangomultiblock.core.manager.MultiBlockManager;
 import org.mangorage.mangomultiblock.core.manager.RegisteredMultiBlockPattern;
 import org.mangorage.mangomultiblock.core.misc.MultiblockMatchResult;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.Collections;
-import java.util.HashSet;
+import java.util.*;
 
 public class SolarPanelBaseBE extends BlockEntity {
 
@@ -87,7 +81,7 @@ public class SolarPanelBaseBE extends BlockEntity {
     /**
      * Strict detection for always-day dimensions:
      * - Explicitly accept dimension ids containing "void"/"voidminers".
-     * - Otherwise only detect if all of the following hold:
+     * - Otherwise only detect if all the following hold:
      *   * Not a vanilla dimension (overworld/nether/end)
      *   * Server-side (avoid client noise)
      *   * Currently night
@@ -183,6 +177,7 @@ public class SolarPanelBaseBE extends BlockEntity {
         lazyEnergyHandler = LazyOptional.of(() -> energyHandler);
     }
 
+    @SuppressWarnings("unused")
     public int getBeamColor() {
         if (structure == null) return 0xFFFFFFFF;
         return MiscUtil.colorMap.getOrDefault(structure.getPath().replace("solar_", ""), 0xFFFFFFFF);
@@ -524,7 +519,7 @@ public class SolarPanelBaseBE extends BlockEntity {
     public void tick(Level pLevel, BlockPos pPos, BlockState pState, ResourceLocation structure, String name) {
         // Only run the logic on server to avoid client-side drift/visual-only updates.
         if (pLevel != null && pLevel.isClientSide) return;
-         if (getStructure() == null || this.name == null) {
+        if (getStructure() == null || this.name == null) {
              setup(structure, name);
          }
 
@@ -538,7 +533,7 @@ public class SolarPanelBaseBE extends BlockEntity {
 
         checkStructure(pLevel, pPos);
 
-        boolean dimensionAllowed = this.name == null || ConfigLoader.getInstance().isSolarDimensionAllowed(pLevel.dimension(), this.name);
+        boolean dimensionAllowed = this.name == null || ConfigLoader.getInstance().isSolarDimensionAllowed(Objects.requireNonNull(pLevel).dimension(), this.name);
         boolean blockedChanged = runtimeState.updateBlockedByDimension(!dimensionAllowed);
         if (blockedChanged && level != null) {
             level.sendBlockUpdated(pPos, getBlockState(), getBlockState(), 3);
@@ -575,7 +570,7 @@ public class SolarPanelBaseBE extends BlockEntity {
             return;
         }
 
-        // Early night check: if this is a normal dimension and it's night, force zero efficiency
+        // Early night check: if this is a normal dimension, and it's night, force zero efficiency
         float solarEff;
         if (level != null) {
             // Explicit safety: do not allow Overworld to be treated as always-day under any circumstances.
@@ -648,6 +643,7 @@ public class SolarPanelBaseBE extends BlockEntity {
 
         runtimeState.updateEnergySnapshot(energyHandler.getLongEnergyStored(), energyHandler.getLongMaxEnergyStored());
 
+        assert pLevel != null;
         pLevel.sendBlockUpdated(pPos, pState, pState, 3);
         sync();
 
@@ -675,11 +671,18 @@ public class SolarPanelBaseBE extends BlockEntity {
             long availableNow = energyHandler.getLongEnergyStored();
             if (availableNow <= 0) break;
 
-            int toSend = (int) Math.min(availableNow, Integer.MAX_VALUE);
+            // Send in int-sized chunks because the IEnergyStorage API uses int values.
+            // Loop until we've sent all available energy or the receiver stops accepting energy.
             cap.ifPresent(receiver -> {
-                int accepted = receiver.receiveEnergy(toSend, false);
-                if (accepted > 0) {
+                long remaining = energyHandler.getLongEnergyStored();
+                while (remaining > 0) {
+                    int toSend = (int) Math.min(remaining, Integer.MAX_VALUE);
+                    int accepted = receiver.receiveEnergy(toSend, false);
+                    if (accepted <= 0) break; // receiver can't accept more
                     energyHandler.removeEnergy(accepted);
+                    remaining -= accepted;
+                    // Defensive check: avoid infinite loops in case of inconsistent receiver behavior
+                    if (accepted < toSend) break;
                 }
             });
         }
@@ -764,8 +767,7 @@ public class SolarPanelBaseBE extends BlockEntity {
         String dimName = level.dimension().location().toString().toLowerCase();
         // Explicit: Overworld must respect day/night even if heuristics/previous cache say otherwise
         if (dimName.equals("minecraft:overworld") && !level.isDay()) return 0;
-        boolean isAlwaysDayDimension = isAlwaysDayDimensionAt(level, getBlockPos());
-        boolean isVoidDimension = isAlwaysDayDimension; // isAlwaysDayDimensionAt already checks name-based void detection
+        boolean isVoidDimension = isAlwaysDayDimensionAt(level, getBlockPos()); // isAlwaysDayDimensionAt already checks name-based void detection
 
         // Void dimension keeps its special handling
         if (isVoidDimension) {
@@ -799,20 +801,15 @@ public class SolarPanelBaseBE extends BlockEntity {
         if (level.getBrightness(LightLayer.SKY, above) <= 0) return 0.0f;
 
         // In non-always-day dimensions, strictly no generation at night
-        if (!isAlwaysDayDimension && !level.isDay()) {
+        if (!level.isDay()) {
             return 0.0f;
         }
 
         // Compute sunFactor: triangular peak at 6000 between 0..12000
         float sunFactor;
-        if (isAlwaysDayDimension) {
-            // Treat always-day as full daylight curve (use skylight fraction instead of time)
-            sunFactor = 1.0f;
-        } else {
-            // timeOfDay is < 12000 here
-            float distance = Math.abs((float) timeOfDay - 6000f);
-            sunFactor = Math.max(0f, 1f - (distance / 6000f));
-        }
+        // timeOfDay is < 12000 here
+        float distance = Math.abs((float) timeOfDay - 6000f);
+        sunFactor = Math.max(0f, 1f - (distance / 6000f));
 
         float efficiency = sunFactor * ((float) level.getBrightness(LightLayer.SKY, above) / 15.0f) * 100.0f;
 

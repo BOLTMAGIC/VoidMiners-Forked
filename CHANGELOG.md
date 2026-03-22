@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.20.1-1.9.25.3] - 2026-03-22
+- Fixed: Repaired and improved the preview and rendering logic for Void Miners and Solar Panels.
+- Fixed: Solar panels can now transfer energy amounts larger than the Java int limit (Integer.MAX_VALUE) to neighboring energy handlers.
+
 ## [1.20.1-1.9.25.2] - 2026-01-03
 - Fixed: Prevent multiple executions of miner and solar panel BlockEntities within the same world-tick when external mods (e.g. Torcherino, Block Booster) attempt to accelerate ticks.
 

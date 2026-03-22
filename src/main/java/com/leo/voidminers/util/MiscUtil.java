@@ -15,6 +15,8 @@ public class MiscUtil {
     public static Map<String, Integer> colorMap = new HashMap<>();
 
     public static Map<String, List<List<List<BlockState>>>> structureMap = new HashMap<>();
+    // Map storing controller anchor coordinates for each structure key: {x, y, z}
+    public static Map<String, int[]> controllerAnchorMap = new HashMap<>();
 
     static {
         for (int i = 0; i < CrystalSet.sets().size(); i++) {
@@ -95,6 +97,7 @@ public class MiscUtil {
                         if (!blocks.containsKey(name)) {
                             blocks.put(name, 1);
                         } else {
+                            //noinspection DataFlowIssue
                             blocks.compute(name, (k, i) -> i + 1);
                         }
                     }

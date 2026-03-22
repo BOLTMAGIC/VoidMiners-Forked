@@ -52,6 +52,9 @@ final class MinerPatternHelper {
                 states.add(Blocks.AIR.defaultBlockState());
             } else if (map.containsKey(c)) {
                 states.add(map.get(c).get());
+            } else {
+                // Preserve row width for markers like '*', so preview alignment stays correct.
+                states.add(Blocks.AIR.defaultBlockState());
             }
         }
         return states;
