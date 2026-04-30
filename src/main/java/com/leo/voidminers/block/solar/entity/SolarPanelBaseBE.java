@@ -843,37 +843,35 @@ public class SolarPanelBaseBE extends BlockEntity {
         // Special handling for void-like dimensions: if the dimension id contains 'void' treat specially.
         String dimensionName = level.dimension().location().toString().toLowerCase();
         boolean isVoidDimension = dimensionName.contains("void") || dimensionName.contains("voidminers");
-
-
-        // In void-like dimension, just check for solid obstructions directly above
-        if (isVoidDimension) {
-            for (int i = 1; i <= 10; i++) {
-                BlockPos checkPos = pos.above(i);
-                BlockState state = level.getBlockState(checkPos);
-                if (!state.isAir()) {
-                    return false;
-                }
-            }
-            return true;
-        }
-
-        // Normal dimension logic: use actual skylight reaching the panel. If skylight > 0 we consider it visible.
-        BlockPos above = pos.above();
-        int skyLightHere = level.getBrightness(LightLayer.SKY, above);
-
-        // If any skylight reaches the panel position, it's visible to sky (handles glass/custom transparent blocks)
-        if (skyLightHere > 0) return true;
-
-        // No skylight reached. Fall back to scanning for an actual solid obstruction to provide better tooltip info.
+        // New rule requested: only air or the mod's glass panel are allowed above a solar panel.
+        // Any other block (including other solar panels) must block generation.
         for (int i = 1; i <= 10; i++) {
             BlockPos checkPos = pos.above(i);
             BlockState state = level.getBlockState(checkPos);
-            if (!state.isAir() && !state.propagatesSkylightDown(level, checkPos)) {
-                return false;
+
+            // Air is fine
+            if (state.isAir()) continue;
+
+            // Allow our specific Glass Panel block to be above without blocking
+            try {
+                if (state.getBlock() == com.leo.voidminers.init.ModBlocks.GLASS_PANEL.get()) continue;
+            } catch (Exception ignored) {
+                // In case registration isn't available yet, fall through to blocking behavior
             }
+
+            // Any other block (including other solar panels) blocks the sky
+            return false;
         }
 
-        return false;
+        // If we only found air or allowed glass panels up to the scan limit, consider skylight for normal dims.
+        if (!isVoidDimension) {
+            BlockPos above = pos.above();
+            int skyLightHere = level.getBrightness(LightLayer.SKY, above);
+            return skyLightHere > 0;
+        }
+
+        // Void-like dimensions: if only air/glass panels above within the scan range, treat as having view on sky
+        return true;
     }
 
     private boolean isEnergyHandlerFull() {
