@@ -89,6 +89,10 @@ public class ModLanguageProvider extends LanguageProvider {
         this.add("minecraft.the_nether", "The Nether");
         this.add("minecraft.the_end", "The End");
         
+        // Messages for tier 1 placement (no modifier slots)
+        this.add("message." + VoidMiners.MODID + ".tier1.miner_no_mods", "Rubetine Void Miner has no slot for modifiers. These can be added starting at the second tier.");
+        this.add("message." + VoidMiners.MODID + ".tier1.solar_no_mods", "Rubetine Solar Panel has no slot for modifiers. These can be added starting at the second tier.");
+
         // Solar panels translations
         for (SolarSet set : SolarSet.sets()) {
             // Skip solar crystal translation if it's null (like ultimate set)
@@ -117,4 +121,3 @@ public class ModLanguageProvider extends LanguageProvider {
         return input.substring(0, 1).toUpperCase() + input.substring(1);
     }
 }
-

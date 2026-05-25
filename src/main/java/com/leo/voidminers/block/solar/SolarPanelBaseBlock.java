@@ -89,6 +89,35 @@ public class SolarPanelBaseBlock extends BaseTransparentBlock implements EntityB
         if (blockEntityRaw instanceof SolarPanelBaseBE controller) {
             controller.setup(structure, name);
         }
+
+        // If placed by a player and this is the tier-1 (rubetine) solar panel, inform them there are no modifier slots
+        if (!pLevel.isClientSide && pPlacer instanceof Player player) {
+            if ("rubetine".equalsIgnoreCase(this.name)) {
+                // Show up to 3 times per player using persistent player tags
+                String tag1 = "voidminers:seen_tier1_solar_1";
+                String tag2 = "voidminers:seen_tier1_solar_2";
+                String tag3 = "voidminers:seen_tier1_solar_3";
+                java.util.Set<String> tags = player.getTags();
+
+                if (!tags.contains(tag3)) {
+                    // Compose a message with colored parts: "Rubetine" red and "second tier" gold (orange-like)
+                    Component msg = Component.literal("")
+                        .append(Component.literal("Rubetine").withStyle(net.minecraft.ChatFormatting.RED))
+                        .append(Component.literal(" Solar Panel has no slot for modifiers. These can be added starting at the "))
+                        .append(Component.literal("second tier").withStyle(net.minecraft.ChatFormatting.GOLD))
+                        .append(Component.literal("."));
+                    player.displayClientMessage(msg, true);
+
+                    if (!tags.contains(tag1)) {
+                        player.addTag(tag1);
+                    } else if (!tags.contains(tag2)) {
+                        player.addTag(tag2);
+                    } else {
+                        player.addTag(tag3);
+                    }
+                }
+            }
+        }
     }
 
     @Nullable

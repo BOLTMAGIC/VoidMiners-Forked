@@ -148,6 +148,36 @@ public class ControllerBaseBlock extends BaseTransparentBlock implements EntityB
         }
 
         controller.setup(structure, name);
+
+        // If placed by a player and this is the tier-1 (rubetine) miner, inform them there are no modifier slots
+        if (!pLevel.isClientSide && pPlacer instanceof Player player) {
+            if ("rubetine".equalsIgnoreCase(this.name)) {
+                // Show up to 3 times per player using persistent player tags
+                String tag1 = "voidminers:seen_tier1_miner_1";
+                String tag2 = "voidminers:seen_tier1_miner_2";
+                String tag3 = "voidminers:seen_tier1_miner_3";
+                java.util.Set<String> tags = player.getTags();
+
+                if (!tags.contains(tag3)) {
+                    // Compose a message with colored parts: "Rubetine" red and "second tier" gold (orange-like)
+                    Component msg = Component.literal("")
+                        .append(Component.literal("Rubetine").withStyle(net.minecraft.ChatFormatting.RED))
+                        .append(Component.literal(" Void Miner has no slot for modifiers. These can be added starting at the "))
+                        .append(Component.literal("second tier").withStyle(net.minecraft.ChatFormatting.GOLD))
+                        .append(Component.literal("."));
+                    // Show as actionbar for visibility
+                    player.displayClientMessage(msg, true);
+
+                    if (!tags.contains(tag1)) {
+                        player.addTag(tag1);
+                    } else if (!tags.contains(tag2)) {
+                        player.addTag(tag2);
+                    } else {
+                        player.addTag(tag3);
+                    }
+                }
+            }
+        }
     }
 
     @Nullable

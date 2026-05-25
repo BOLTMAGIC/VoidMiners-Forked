@@ -1,5 +1,8 @@
 # Changelog
 
+## [1.20.1-1.9.25.5] - 2026-05-26
+- Added a tooltip for Rubetine Tier not accepting any modifiers.
+
 ## [1.20.1-1.9.25.4] - 2026-04-30
 - Fixed Solar Panels from generating power even when they are not receiving sunlight
 
