@@ -74,7 +74,7 @@
   "tooltip.voidminers.energy": "エネルギー倍率: %dx",
   "tooltip.voidminers.item": "アイテム倍率: %dx",
   "tooltip.voidminers.speed": "掘削間隔倍率: %dx",
-  "tooltip.voidminers.structure.weight": "確率: %s",
+  "tooltip.voidminers.structure.weight": "確率: %s (%s)",
   "tooltip.voidminerscreative_only": "クリエイティブ専用",
   "voidminers.itemGroup.items": "アイテム",
   "item.voidminers.upgrade_max_storage_t1": "ストレージアップグレード T1",

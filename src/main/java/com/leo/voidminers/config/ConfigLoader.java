@@ -42,6 +42,10 @@ public class ConfigLoader {
     @Expose
     public boolean ALLOW_TICK_ACCELERATION_MULTIBLOCKS = false;
 
+    /** If true, JEI percent display uses a color-blind friendly palette. */
+    @Expose
+    public boolean COLOR_BLIND_PERCENT = false;
+
     @Expose
     public DimensionControl MINER_DIMENSION_SETTINGS = new DimensionControl();
 

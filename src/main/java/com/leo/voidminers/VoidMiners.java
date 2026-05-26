@@ -26,7 +26,7 @@ public class VoidMiners {
     public static final Logger LOGGER = LogUtils.getLogger();
 
     public VoidMiners() {
-        IEventBus modEventBus = FMLJavaModLoadingContext.get().getModEventBus();
+        @SuppressWarnings("removal") IEventBus modEventBus = FMLJavaModLoadingContext.get().getModEventBus();
         MinecraftForge.EVENT_BUS.register(this);
 
         ConfigLoader.getInstance().load();
@@ -51,6 +51,7 @@ public class VoidMiners {
 
     // TODO: move render type to model json
     private static void setupRenders() {
+        //noinspection removal
         ItemBlockRenderTypes.setRenderLayer(ModBlocks.GLASS_PANEL.get(), RenderType.translucent());
     }
 

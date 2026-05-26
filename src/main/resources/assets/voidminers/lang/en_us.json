@@ -135,7 +135,7 @@
   "tooltip.voidminers.item": "Item Amount Modifier: %dx",
   "tooltip.voidminers.solar_panel.missing_structure": "Solar Panel is not assembled correctly, shift r-click the block for a guide. Total needed blocks: ",
   "tooltip.voidminers.speed": "Duration Modifier: %dx",
-  "tooltip.voidminers.structure.weight": "Weight: %s",
+  "tooltip.voidminers.structure.weight": "Weight: %s (%s)",
   "tooltip.voidminerscreative_only": "Creative Only",
   "voidminers.itemGroup.items": "Items",
   "item.voidminers.upgrade_max_storage_t1": "Storage Upgrade T1",

@@ -19,6 +19,9 @@ import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
+import net.minecraft.ChatFormatting;
+import com.leo.voidminers.config.ConfigLoader;
+import org.jetbrains.annotations.NotNull;
 
 public class MinerCategory implements IRecipeCategory<MinerRecipe> {
     public final ResourceLocation UID;
@@ -41,27 +44,27 @@ public class MinerCategory implements IRecipeCategory<MinerRecipe> {
     }
 
     @Override
-    public RecipeType<MinerRecipe> getRecipeType() {
+    public @NotNull RecipeType<MinerRecipe> getRecipeType() {
         return RECIPE_TYPE;
     }
 
     @Override
-    public Component getTitle() {
+    public @NotNull Component getTitle() {
         return Component.translatable("gui." + VoidMiners.MODID + ".miner", tier);
     }
 
     @Override
-    public IDrawable getBackground() {
+    public @NotNull IDrawable getBackground() {
         return background;
     }
 
     @Override
-    public IDrawable getIcon() {
+    public @NotNull IDrawable getIcon() {
         return icon;
     }
 
     @Override
-    public void setRecipe(IRecipeLayoutBuilder builder, MinerRecipe minerRecipe, IFocusGroup iFocusGroup) {
+    public void setRecipe(IRecipeLayoutBuilder builder, MinerRecipe minerRecipe, @NotNull IFocusGroup iFocusGroup) {
         builder.addSlot(
             RecipeIngredientRole.OUTPUT,
             4,
@@ -70,19 +73,70 @@ public class MinerCategory implements IRecipeCategory<MinerRecipe> {
     }
 
     @Override
-    public void draw(MinerRecipe recipe, IRecipeSlotsView recipeSlotsView, GuiGraphics guiGraphics, double mouseX, double mouseY) {
-        Component weight = Component.translatable("tooltip." + VoidMiners.MODID + ".structure.weight", customFormat(recipe.output().weight));
+    public void draw(MinerRecipe recipe, @NotNull IRecipeSlotsView recipeSlotsView, @NotNull GuiGraphics guiGraphics, double mouseX, double mouseY) {
+        // compute percent chance based on total weights for the recipe's dimension
+        double total = JeiPlugin.getTotalWeightForDimension(recipe.dimension().location(), this.tier);
+        double percent;
+        if (total == 0.0) {
+            percent = 0.0;
+        } else {
+            double weight = recipe.output().weight;
+            // If this item accounts for (effectively) the entire total (e.g. only item in the dimension),
+            // avoid rounding small floating errors producing a tiny displayed percentage like "<0.001%".
+            // Use a relative comparison to detect equality within a small epsilon.
+            double relDiff = Math.abs(total - weight) / Math.max(Math.abs(total), Math.abs(weight));
+            if (weight > 0.0 && relDiff <= 1e-9) {
+                percent = 100.0;
+            } else {
+                percent = (weight / total) * 100.0;
+            }
+        }
+        String percentStr = formatPercent(percent);
+
+        // If color-blind mode is enabled, remove all colors and use the default text color.
+        boolean cb = ConfigLoader.getInstance().COLOR_BLIND_PERCENT;
+        Component percentComponent;
+        if (cb) {
+            // Color-blind mode: no coloring at all
+            percentComponent = Component.literal(percentStr + "%");
+        } else {
+            // choose color based on percent ranges
+            ChatFormatting color;
+            // default palette
+            if (percent <= 0.0) {
+                color = ChatFormatting.DARK_RED;
+            } else if (percent <= 10.0) {
+                color = ChatFormatting.GOLD; // orange-like
+            } else if (percent <= 25.0) {
+                color = ChatFormatting.YELLOW;
+            } else if (percent <= 50.0) {
+                color = ChatFormatting.GREEN;
+            } else {
+                color = ChatFormatting.DARK_GREEN;
+            }
+
+            // include percent sign inside the styled component so the '%' is colored as well
+            percentComponent = Component.literal(percentStr + "%").withStyle(color);
+        }
+
+        // For JEI we display only the percent Component (centered). The dimension icon will be placed at the far right.
+        Component displayComponent = percentComponent;
         String dimensionName = recipe.dimension().location().toLanguageKey();
 
         ResourceLocation texture = ResourceLocation.fromNamespaceAndPath(VoidMiners.MODID, "textures/gui/icon/" + getDimensionIcon(recipe.dimension()) + ".png");
 
         Font font = Minecraft.getInstance().font;
 
-        // Calculate text width and position icon accordingly
-        int textWidth = font.width(weight);
-        int iconX = 24 + textWidth + 4; // Text position + text width + small gap
+        // Calculate text width and center percent within the category background (width = 125)
+        int textWidth = font.width(displayComponent);
+        int backgroundWidth = 125;
+        int percentX = Math.max(0, (backgroundWidth - textWidth) / 2);
 
-        guiGraphics.drawString(font, weight, 24, 4, 0xFFFFFFFF);
+        // Place the dimension icon at the far right with small padding
+        int iconX = backgroundWidth - 16 - 4; // icon width 16, padding 4
+
+        // Draw percent (may be colored) centered
+        guiGraphics.drawString(font, displayComponent, percentX, 4, 0xFFFFFFFF);
         guiGraphics.blit(
             texture,
             iconX,
@@ -108,17 +162,21 @@ public class MinerCategory implements IRecipeCategory<MinerRecipe> {
             && mouseY <= y2;
     }
 
-    public static String customFormat(double number) {
+    public static String formatPercent(double number) {
         if (number == 0.0) {
             return "0";
         }
+        // Use BigDecimal with MathContext(3) to round to 3 significant digits as requested by the user.
+        java.math.BigDecimal bd = new java.math.BigDecimal(number);
+        java.math.BigDecimal bdRounded = bd.round(new java.math.MathContext(3));
 
-        // Remove trailing zeros and unnecessary decimal point/comma
-        String formatted = String.format("%.10f", number);
-        formatted = formatted.replaceAll("0+$", "");
-        formatted = formatted.replaceAll("[.,]$", "");
+        // If rounding would produce zero (tiny positive values), keep the special marker
+        if (bdRounded.compareTo(java.math.BigDecimal.ZERO) == 0 && bd.compareTo(java.math.BigDecimal.ZERO) > 0) {
+            return "<0.001";
+        }
 
-        return formatted;
+        // Return the rounded value as string. Use toString() (may use exponential notation for very small numbers).
+        return bdRounded.toString();
     }
 
     public static String getDimensionIcon(ResourceKey<Level> dimension) {
