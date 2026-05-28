@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.20.1-1.9.25.7] - 2026-05-28
+- Remove unused logging code and clean up ControllerDiagnosticsLogger
+
+## [1.20.1-1.9.25.6] - 2026-05-26
+- Inform players that Rubetine tier-1 miners and solar panels have no modifier slots
+
 ## [1.20.1-1.9.25.5] - 2026-05-26
 - Added a tooltip for Rubetine Tier not accepting any modifiers.
 
