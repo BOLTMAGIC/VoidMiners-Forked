@@ -205,6 +205,16 @@ public class ConfigLoader {
     @Expose
     public int UPGRADE_T3_SLOTS = 27;
 
+    // Performance tuning for miner column checks
+    @Expose
+    public int MINER_CHECK_INTERVAL_TICKS = 10; // A: only run heavy checks at most every N ticks
+
+    @Expose
+    public int MINER_CACHE_TTL_TICKS = 200; // C: cache lifetime in ticks for column results
+
+    @Expose
+    public int MINER_PROGRESS_LOOKAHEAD = 5; // B: always run check if progress within this many ticks of generation
+
     public void load() {
         Gson gson = new GsonBuilder()
                 .excludeFieldsWithoutExposeAnnotation()

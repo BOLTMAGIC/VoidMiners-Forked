@@ -16,7 +16,6 @@ import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.game.ClientGamePacketListener;
 import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraft.util.RandomSource;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
@@ -30,17 +29,14 @@ import net.minecraftforge.common.capabilities.ForgeCapabilities;
 import net.minecraftforge.common.util.LazyOptional;
 import net.minecraftforge.items.ItemStackHandler;
 import net.minecraftforge.items.wrapper.CombinedInvWrapper;
-import net.minecraftforge.registries.ForgeRegistries;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.mangorage.mangomultiblock.core.manager.MultiBlockManager;
 import org.mangorage.mangomultiblock.core.manager.RegisteredMultiBlockPattern;
 import org.mangorage.mangomultiblock.core.misc.MultiblockMatchResult;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class ControllerBaseBE extends BlockEntity {
 
@@ -52,7 +48,7 @@ public class ControllerBaseBE extends BlockEntity {
     private static final int BASE_OUTPUT_SLOTS = 9;
 
     // itemHandler can be recreated when upgrades change; keep non-final
-    private ItemStackHandler itemHandler = createItemHandler(BASE_OUTPUT_SLOTS);
+    private ItemStackHandler itemHandler = createItemHandler();
 
     // Upgrade slots (hidden from production; used to calculate storage increase)
     private final ItemStackHandler upgradeHandler = new ItemStackHandler(3) {
@@ -95,14 +91,27 @@ public class ControllerBaseBE extends BlockEntity {
 
     // Per-instance guard to prevent multiple executions inside the same world tick (e.g. from booster mods)
     private long lastProcessedGameTime = Long.MIN_VALUE;
+    // Per-instance guard for void/bedrock checks
+    private long lastVoidCheckGameTime = Long.MIN_VALUE;
+
+    // Cache shared across controllers to avoid repeated column scans by multiple miners
+    private static final ConcurrentHashMap<ColumnKey, CachedView> columnCache = new ConcurrentHashMap<>();
 
     public ControllerBaseBE(BlockPos pPos, BlockState pBlockState) {
         super(ModBlockEntities.CONTROLLER_BASE_BE.get(), pPos, pBlockState);
     }
 
+    // Helper types for column cache
+        private record ColumnKey(ResourceLocation dim, int x, int z) {
+
+    }
+
+    private record CachedView(boolean hasView, long checkedAt) {
+    }
+
     // Helper to create item handlers with correct callback
-    private static ItemStackHandler createItemHandler(int slots) {
-        return new ItemStackHandler(slots) {
+    private static ItemStackHandler createItemHandler() {
+        return new ItemStackHandler(ControllerBaseBE.BASE_OUTPUT_SLOTS) {
             @Override
             protected void onContentsChanged(int slot) {
                 super.onContentsChanged(slot);
@@ -189,11 +198,12 @@ public class ControllerBaseBE extends BlockEntity {
 
     public void updateShowStructure() {
         showStructure = !showStructure;
+        assert level != null;
         level.sendBlockUpdated(getBlockPos(), getBlockState(), getBlockState(), 3);
     }
 
     @Override
-    protected void saveAdditional(CompoundTag pTag) {
+    protected void saveAdditional(@NotNull CompoundTag pTag) {
         super.saveAdditional(pTag);
 
         CompoundTag data = new CompoundTag();
@@ -212,7 +222,7 @@ public class ControllerBaseBE extends BlockEntity {
     }
 
     @Override
-    public void load(CompoundTag pTag) {
+    public void load(@NotNull CompoundTag pTag) {
         super.load(pTag);
         CompoundTag data = pTag.getCompound(VoidMiners.MODID);
         if (data.isEmpty())
@@ -269,13 +279,13 @@ public class ControllerBaseBE extends BlockEntity {
         lazyItemHandler = LazyOptional.of(() -> itemHandler);
         // Provide combined item handler lazily; create on demand
         lazyCombinedItemHandler = LazyOptional.of(() -> new CombinedInvWrapper(itemHandler, upgradeHandler));
-        // Ensure the active itemHandler instance has correct onContentsChanged behaviour
+        // Ensure the active itemHandler instance has correct onContentsChanged behavior
         // (recreate handler with controller-aware callback)
         replaceItemHandler(itemHandler.getSlots());
     }
 
     @Override
-    public CompoundTag getUpdateTag() {
+    public @NotNull CompoundTag getUpdateTag() {
         CompoundTag tag = super.getUpdateTag();
         saveAdditional(tag);
         return tag;
@@ -339,9 +349,10 @@ public class ControllerBaseBE extends BlockEntity {
 
         boolean hasVoidView = hasViewOnBedrockOrVoid(pPos);
 
-        boolean dimensionAllowed = name == null || ConfigLoader.getInstance().isMinerDimensionAllowed(pLevel.dimension(), name);
+        boolean dimensionAllowed = name == null || ConfigLoader.getInstance().isMinerDimensionAllowed(Objects.requireNonNull(pLevel).dimension(), name);
         boolean blockedChanged = runtimeState.updateBlockedByDimension(!dimensionAllowed);
         if (blockedChanged) {
+            assert level != null;
             level.sendBlockUpdated(pPos, getBlockState(), getBlockState(), 3);
         }
 
@@ -351,6 +362,7 @@ public class ControllerBaseBE extends BlockEntity {
             long stored = energyHandler.getLongEnergyStored();
             long capacity = energyHandler.getLongMaxEnergyStored();
             runtimeState.resetCycleSnapshot(stored, capacity);
+            assert level != null;
             level.sendBlockUpdated(pPos, getBlockState(), getBlockState(), 3);
             diagnosticsLogger.logStateTransitions(
                 name,
@@ -370,6 +382,7 @@ public class ControllerBaseBE extends BlockEntity {
         }
 
         active = foundStructure && hasVoidView;
+        assert level != null;
         level.sendBlockUpdated(pPos, getBlockState(), getBlockState(), 3);
 
         if (!active) {
@@ -439,6 +452,7 @@ public class ControllerBaseBE extends BlockEntity {
         energyHandler.removeEnergy(energyDemand);
         runtimeState.setLastEnergyStored(energyHandler.getLongEnergyStored());
 
+        assert pLevel != null;
         pLevel.sendBlockUpdated(pPos, pState, pState, 3);
         sync();
 
@@ -470,7 +484,8 @@ public class ControllerBaseBE extends BlockEntity {
 
 
     private void sync() {
-        setChanged(getLevel(), getBlockPos(), getBlockState());
+        assert level != null;
+        setChanged(level, getBlockPos(), getBlockState());
 
         if(level.isClientSide) return;
 
@@ -497,30 +512,85 @@ public class ControllerBaseBE extends BlockEntity {
         return (int) (ConfigLoader.getInstance().getMinerConfig(name).duration() * mod);
     }
 
-    public ItemStack getBoostedStack(ItemStack base) {
-        return inventoryHelper.getBoostedStack(base);
-    }
-
-    public ItemStack getWeightedItem(List<WeightedStack> items, RandomSource random) {
-        return inventoryHelper.getWeightedItem(items, random);
-    }
-
     public void drops() {
         inventoryHelper.drops();
     }
 
     private boolean hasViewOnBedrockOrVoid(BlockPos pos) {
-        for (int i = 0; i < 320; i++) {
-            BlockPos check = pos.below(i);
+        if (level == null) return false;
 
-            if(level.getBlockState(check).is(Blocks.BEDROCK)) return true;
+        long gameTime = level.getGameTime();
 
-            if (level.getBlockState(check).propagatesSkylightDown(level, check) || level.isFluidAtPosition(check, (fluidState -> !fluidState.isEmpty()))) continue;
-            
+        // Build a column key for cache lookup
+        ColumnKey key = new ColumnKey(level.dimension().location(), pos.getX(), pos.getZ());
+
+        CachedView cached = columnCache.get(key);
+
+        // Read config-tunable values
+        int checkInterval = ConfigLoader.getInstance().MINER_CHECK_INTERVAL_TICKS;
+        int cacheTtl = ConfigLoader.getInstance().MINER_CACHE_TTL_TICKS;
+        int progressLookahead = ConfigLoader.getInstance().MINER_PROGRESS_LOOKAHEAD;
+
+        // If we have a fresh cached value, use it
+        if (cached != null && gameTime - cached.checkedAt <= cacheTtl) {
+            return cached.hasView;
+        }
+
+        // If we are not due for a new check yet, and we have a cached (even stale) value, reuse it
+        if (gameTime - this.lastVoidCheckGameTime < checkInterval && cached != null) {
+            return cached.hasView;
+        }
+
+        // Heuristic: if we're very close to finishing (about to generate an item), do the check regardless
+        if (this.progress >= 0 && this.progress < getMaxProgress() - progressLookahead && (gameTime - this.lastVoidCheckGameTime) < checkInterval && cached != null) {
+            return cached.hasView;
+        }
+
+        // Perform the (optimized) column scan and update the cache
+        boolean result;
+
+        // Only check down to the world's minimum build height, and at most 320 blocks
+        int minY = level.getMinBuildHeight();
+        int startY = pos.getY() - 1;
+        int lowestY = Math.max(minY, pos.getY() - 320);
+
+        result = true; // assume true (void) until we find a blocking non-transparent
+        for (int y = startY; y >= lowestY; y--) {
+            BlockPos check = new BlockPos(pos.getX(), y, pos.getZ());
+            BlockState state = level.getBlockState(check);
+
+            if (state.is(Blocks.BEDROCK)) {
+                break;
+            }
+
+            if (state.isAir()) continue; // air -> continue downward
+
+            if (!state.getFluidState().isEmpty()) continue; // fluid -> treat as transparent
+
+            if (state.propagatesSkylightDown(level, check)) continue; // transparent by skylight rules
+
+            // Non-air, non-fluid, non-transparent block blocks view
+            result = false;
+            // store and return immediately
+            columnCache.put(key, new CachedView(result, gameTime));
+            this.lastVoidCheckGameTime = gameTime;
             return false;
         }
 
-        return true;
+        // No blockers found in range -> view to void
+        columnCache.put(key, new CachedView(true, gameTime));
+        this.lastVoidCheckGameTime = gameTime;
+        return result;
+    }
+
+    /**
+     * Invalidate the cached view result for the column at the given position in the given level.
+     * This should be called when a block changes in that column (place/break/fluid change).
+     */
+    public static void invalidateCacheFor(Level level, BlockPos pos) {
+        if (level == null || pos == null) return;
+        ColumnKey key = new ColumnKey(level.dimension().location(), pos.getX(), pos.getZ());
+        columnCache.remove(key);
     }
 
     public void checkStructure(Level pLevel, BlockPos pPos) {

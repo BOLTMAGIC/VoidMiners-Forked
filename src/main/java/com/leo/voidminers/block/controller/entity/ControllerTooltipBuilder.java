@@ -8,9 +8,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.state.pattern.BlockInWorld;
-import net.minecraft.world.item.ItemStack;
 import net.minecraftforge.items.ItemStackHandler;
-import net.minecraftforge.registries.ForgeRegistries;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -87,11 +85,11 @@ final class ControllerTooltipBuilder {
 
             tooltip.add(Component.literal("⚡ CONSUMPTION: ").withStyle(ChatFormatting.RED)
                 .append(Component.literal(String.format("%,d RF/tick", controller.getRfTick())).withStyle(ChatFormatting.WHITE))
-                .append(getModifierText(" (", energyMod, baseEnergyTick, "×)", ChatFormatting.AQUA)));
+                .append(getModifierText(energyMod)));
 
             tooltip.add(Component.literal("⏱ DURATION: ").withStyle(ChatFormatting.BLUE)
                 .append(Component.literal(String.format("%d ticks", controller.getMaxProgress())).withStyle(ChatFormatting.WHITE))
-                .append(getModifierText(" (", speedMod, baseDuration, "×)", ChatFormatting.AQUA)));
+                .append(getModifierText(speedMod)));
 
             if (itemMod != 1.0f) {
                 tooltip.add(Component.literal("📦 ITEM BOOST: ").withStyle(ChatFormatting.LIGHT_PURPLE)
@@ -122,7 +120,7 @@ final class ControllerTooltipBuilder {
 
             tooltip.add(Component.literal("⚡ DEMAND: ").withStyle(ChatFormatting.RED)
                 .append(Component.literal(String.format("%,d RF/tick", runtimeState.getLastEnergyDemand())).withStyle(ChatFormatting.WHITE))
-                .append(getModifierText(" (", energyMod, baseEnergyTick, "×)", ChatFormatting.AQUA)));
+                .append(getModifierText(energyMod)));
 
             tooltip.add(Component.literal("📊 MODIFIERS: ").withStyle(ChatFormatting.AQUA)
                 .append(Component.literal(String.format("%d installed", modifierMap.size())).withStyle(ChatFormatting.WHITE))
@@ -208,12 +206,10 @@ final class ControllerTooltipBuilder {
         tooltip.add(Component.literal("📋 MISSING BLOCKS:").withStyle(ChatFormatting.YELLOW));
 
         if (structure != null && MiscUtil.structureMap.containsKey(structure.toString())) {
-            MiscUtil.getNeededBlocks(MiscUtil.structureMap.get(structure.toString())).forEach((string, integer) -> {
-                tooltip.add(Component.literal("  • ").withStyle(ChatFormatting.GRAY)
-                    .append(Component.literal(string).withStyle(ChatFormatting.WHITE))
-                    .append(Component.literal(": ").withStyle(ChatFormatting.GRAY))
-                    .append(Component.literal(String.valueOf(integer)).withStyle(ChatFormatting.RED)));
-            });
+            MiscUtil.getNeededBlocks(MiscUtil.structureMap.get(structure.toString())).forEach((string, integer) -> tooltip.add(Component.literal("  • ").withStyle(ChatFormatting.GRAY)
+                .append(Component.literal(string).withStyle(ChatFormatting.WHITE))
+                .append(Component.literal(": ").withStyle(ChatFormatting.GRAY))
+                .append(Component.literal(String.valueOf(integer)).withStyle(ChatFormatting.RED))));
         }
 
         return withUpgradeAtBottom(controller, tooltip);
@@ -243,14 +239,14 @@ final class ControllerTooltipBuilder {
         };
     }
 
-    private static Component getModifierText(String prefix, float modifier, int baseValue, String suffix, ChatFormatting color) {
+    private static Component getModifierText(float modifier) {
         if (modifier == 1.0f) {
             return Component.empty();
         }
 
-        return Component.literal(prefix).withStyle(color)
-            .append(Component.literal(String.format("%.1f", modifier)).withStyle(color))
-            .append(Component.literal(suffix).withStyle(color));
+        return Component.literal(" (").withStyle(ChatFormatting.AQUA)
+            .append(Component.literal(String.format("%.1f", modifier)).withStyle(ChatFormatting.AQUA))
+            .append(Component.literal("×)").withStyle(ChatFormatting.AQUA));
     }
 
     private static String getEnergyBar(int current, int max) {
