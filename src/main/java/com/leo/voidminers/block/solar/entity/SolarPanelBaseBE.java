@@ -35,6 +35,8 @@ import org.mangorage.mangomultiblock.core.manager.RegisteredMultiBlockPattern;
 import org.mangorage.mangomultiblock.core.misc.MultiblockMatchResult;
 
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.Objects;
 
 public class SolarPanelBaseBE extends BlockEntity {
 
@@ -315,17 +317,19 @@ public class SolarPanelBaseBE extends BlockEntity {
                 blockingIssue = "None (direct view to sky)";
                 tip = "";
             } else if (level != null) {
-                for (int i = 1; i <= 10; i++) {
-                    BlockPos checkPos = worldPosition.above(i);
-                    BlockState state = level.getBlockState(checkPos);
-                    // treat as blocking only if the block is not air and does NOT propagate skylight
-                    if (!state.isAir() && !state.propagatesSkylightDown(level, checkPos)) {
-                        blockingIssue = String.format("Blocked by %s at %d blocks above",
-                            state.getBlock().getName().getString(), i);
-                        tip = String.format("Remove the %s above the panel",
-                            state.getBlock().getName().getString());
-                        break;
-                    }
+                // Find the first blocking above, scan a reasonable diagnostic range (configurable if needed)
+                BlockPos blocker = findBlockingBlockAbove(worldPosition);
+                if (blocker != null) {
+                    BlockState state = level.getBlockState(blocker);
+                    int distance = blocker.getY() - worldPosition.getY();
+                    blockingIssue = String.format("Blocked by %s at %d blocks above",
+                        state.getBlock().getName().getString(), distance);
+                    tip = String.format("Remove the %s above the panel",
+                        state.getBlock().getName().getString());
+                } else {
+                    // No blocking block within diagnostic range
+                    blockingIssue = "Blocked by blocks above";
+                    tip = "Remove blocks above the panel (check higher up)";
                 }
             }
 
@@ -839,40 +843,122 @@ public class SolarPanelBaseBE extends BlockEntity {
 
 
     private boolean hasViewOnSky(BlockPos pos) {
+        // Use cached version for efficiency
         if (level == null) return false;
-        // Special handling for void-like dimensions: if the dimension id contains 'void' treat specially.
-        String dimensionName = level.dimension().location().toString().toLowerCase();
-        boolean isVoidDimension = dimensionName.contains("void") || dimensionName.contains("voidminers");
-        // New rule requested: only air or the mod's glass panel are allowed above a solar panel.
-        // Any other block (including other solar panels) must block generation.
-        for (int i = 1; i <= 10; i++) {
-            BlockPos checkPos = pos.above(i);
-            BlockState state = level.getBlockState(checkPos);
+        return hasViewOnSkyCached(pos);
+    }
 
-            // Air is fine
-            if (state.isAir()) continue;
+            // --- Improvements: caching and faster checks ---
+            // Cache per column (dimension,x,z) to avoid repeated sky scans by many panels
+            private static final ConcurrentHashMap<ColumnKey, Boolean> solarColumnCache = new ConcurrentHashMap<>();
+            private static final ConcurrentHashMap<ColumnKey, Long> solarColumnCheckedAt = new ConcurrentHashMap<>();
 
-            // Allow our specific Glass Panel block to be above without blocking
-            try {
-                if (state.getBlock() == com.leo.voidminers.init.ModBlocks.GLASS_PANEL.get()) continue;
-            } catch (Exception ignored) {
-                // In case registration isn't available yet, fall through to blocking behavior
+    private record ColumnKey(String dim, int x, int z) {
+
+    }
+
+            public static void invalidateSolarCacheFor(Level level, BlockPos pos) {
+                if (level == null || pos == null) return;
+                ColumnKey key = new ColumnKey(level.dimension().location().toString(), pos.getX(), pos.getZ());
+                solarColumnCache.remove(key);
+                solarColumnCheckedAt.remove(key);
             }
 
-            // Any other block (including other solar panels) blocks the sky
-            return false;
-        }
+            private void checkSkyFast(BlockPos pos) {
+                if (level == null) return;
+                // Fast path: use canSeeSky which is optimized internally
+                try {
+                    level.canSeeSky(pos.above());
+                } catch (Throwable ignored) {}
+            }
 
-        // If we only found air or allowed glass panels up to the scan limit, consider skylight for normal dims.
-        if (!isVoidDimension) {
-            BlockPos above = pos.above();
-            int skyLightHere = level.getBrightness(LightLayer.SKY, above);
-            return skyLightHere > 0;
-        }
+            private boolean hasViewOnSkyCached(BlockPos pos) {
+                if (level == null) return false;
 
-        // Void-like dimensions: if only air/glass panels above within the scan range, treat as having view on sky
-        return true;
-    }
+                long gameTime = level.getGameTime();
+                ColumnKey key = new ColumnKey(level.dimension().location().toString(), pos.getX(), pos.getZ());
+
+                int interval = ConfigLoader.getInstance().SOLAR_CHECK_INTERVAL_TICKS;
+                int ttl = ConfigLoader.getInstance().SOLAR_CACHE_TTL_TICKS;
+
+                Boolean cached = solarColumnCache.get(key);
+                Long checkedAt = solarColumnCheckedAt.get(key);
+
+                // Immediate neighbor check: if a non-transparent block is directly above the panel,
+                // return false immediately regardless of cached column results. This handles newly-placed
+                // blocks that may not yet have been invalidated via events.
+                BlockPos above = pos.above();
+                BlockState aboveState = level.getBlockState(above);
+                if (!aboveState.isAir()) {
+                    boolean allowedGlass = false;
+                    try { allowedGlass = (aboveState.getBlock() == com.leo.voidminers.init.ModBlocks.GLASS_PANEL.get()); } catch (Exception ignored) {}
+                    if (!allowedGlass && !aboveState.propagatesSkylightDown(level, above)) {
+                        // Immediate above block blocks sky
+                        solarColumnCache.put(key, false);
+                        solarColumnCheckedAt.put(key, gameTime);
+                        return false;
+                    }
+                }
+
+                if (cached != null && checkedAt != null && gameTime - checkedAt <= ttl) return cached;
+
+                if (checkedAt != null && gameTime - checkedAt < interval && cached != null) return cached;
+
+                // Compute fresh
+                boolean result;
+
+                // Fast check first for a quick path
+                checkSkyFast(pos);// Fast path succeeded; still fall through to a conservative scan to ensure correctness
+
+                // Fallback: conservative scan up to build limit (or 320 blocks) to detect opaque blockers.
+                boolean blocked = false;
+                @SuppressWarnings("unused") int minY = level.getMinBuildHeight();
+                int startY = pos.getY() + 1;
+                int topY = Math.min(pos.getY() + 320, level.getMaxBuildHeight() - 1);
+                for (int y = startY; y <= topY; y++) {
+                    BlockPos checkPos = new BlockPos(pos.getX(), y, pos.getZ());
+                    BlockState state = level.getBlockState(checkPos);
+                    if (state.isAir()) continue;
+                    boolean isGlass = false;
+                    try { isGlass = (state.getBlock() == com.leo.voidminers.init.ModBlocks.GLASS_PANEL.get()); } catch (Exception ignored) {}
+                    boolean propagates = state.propagatesSkylightDown(level, checkPos);
+                    // encountered a block during fallback scan; record its properties for decision
+                    if (isGlass) continue;
+                    if (propagates) continue; // transparent
+                    // opaque blocker found
+                    // blocked by an opaque non-glass block
+                    blocked = true;
+                    break;
+                }
+
+                if (!blocked && level.getBrightness(LightLayer.SKY, pos.above()) > 0) {
+                    result = true;
+                } else {
+                    result = !blocked;
+                }
+                // fallback scan completed; store result
+
+                solarColumnCache.put(key, result);
+                solarColumnCheckedAt.put(key, gameTime);
+                return result;
+            }
+
+                    // Helper that finds the first blocking above a position within maxDistance, or null if none.
+                    private BlockPos findBlockingBlockAbove(BlockPos pos) {
+                        if (level == null) return null;
+                        int topY = Math.min(pos.getY() + 64, level.getMaxBuildHeight() - 1);
+                        for (int y = pos.getY() + 1; y <= topY; y++) {
+                            BlockPos checkPos = new BlockPos(pos.getX(), y, pos.getZ());
+                            BlockState state = level.getBlockState(checkPos);
+                            if (state.isAir()) continue;
+                            try {
+                                if (state.getBlock() == com.leo.voidminers.init.ModBlocks.GLASS_PANEL.get()) continue;
+                            } catch (Exception ignored) {}
+                            if (state.propagatesSkylightDown(level, checkPos)) continue;
+                            return checkPos;
+                        }
+                        return null;
+                    }
 
     private boolean isEnergyHandlerFull() {
         return energyHandler.getLongEnergyStored() >= energyHandler.getLongMaxEnergyStored();
@@ -950,5 +1036,33 @@ public class SolarPanelBaseBE extends BlockEntity {
 
     public ResourceLocation getStructure() {
         return structure;
+    }
+
+    /**
+     * Called when a block above this panel (in the same column) has changed.
+     * This forces an immediate re-evaluation of sky visibility and updates runtime state so
+     * generation stops promptly instead of waiting for the next tick.
+     */
+    public void handleBlockAboveChanged() {
+        if (this.level == null) return;
+        boolean sky = hasViewOnSky(this.getBlockPos());
+        runtimeState.setHasSkyView(sky);
+
+        if (!sky) {
+            runtimeState.setWorking(false);
+            // try to remove any energy that may have been added this tick so generation stops immediately
+                try {
+                    long lastGen = runtimeState.lastGeneration();
+                    if (lastGen > 0 && energyHandler != null) {
+                        energyHandler.removeEnergy(lastGen);
+                    }
+                } catch (Exception ignored) {}
+            runtimeState.setLastGeneration(0);
+            runtimeState.setLastEfficiency(0);
+        }
+
+        // push an immediate block update so clients and neighboring systems see the change
+        level.sendBlockUpdated(this.getBlockPos(), this.getBlockState(), this.getBlockState(), 3);
+        setChanged();
     }
 }

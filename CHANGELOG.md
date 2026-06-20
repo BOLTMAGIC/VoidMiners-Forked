@@ -4,6 +4,8 @@
 - Performance: Optimized Void Miner visibility checks (reduced per-tick block scans).
   - Checks now prefer cheap air/fluid tests before transparency tests, respect world build limits,
     use a per-column cache with TTL and event-based invalidation, and limit frequency via configurable intervals.
+- Performance: Solar panels are more TPS-friendly: they now check the blocks above the solar panel controller
+  and will stop producing energy when sky visibility is blocked.
 
 ## [1.20.1-1.9.25.7] - 2026-05-28
 - Remove unused logging code and clean up ControllerDiagnosticsLogger

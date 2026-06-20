@@ -22,6 +22,7 @@ import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.Shapes;
 import net.minecraft.world.phys.shapes.VoxelShape;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 public class SolarPanelBaseBlock extends BaseTransparentBlock implements EntityBlock {
@@ -34,8 +35,9 @@ public class SolarPanelBaseBlock extends BaseTransparentBlock implements EntityB
         this.name = name;
     }
 
+    @SuppressWarnings("deprecation")
     @Override
-    public void onRemove(BlockState pState, Level pLevel, BlockPos pPos, BlockState pNewState, boolean pIsMoving) {
+    public void onRemove(@NotNull BlockState pState, @NotNull Level pLevel, @NotNull BlockPos pPos, @NotNull BlockState pNewState, boolean pIsMoving) {
         if (pState.getBlock() != pNewState.getBlock()) {
             BlockEntity blockEntity = pLevel.getBlockEntity(pPos);
             if (blockEntity instanceof SolarPanelBaseBE solarBE) {
@@ -48,12 +50,13 @@ public class SolarPanelBaseBlock extends BaseTransparentBlock implements EntityB
 
     @Nullable
     @Override
-    public BlockEntity newBlockEntity(BlockPos blockPos, BlockState blockState) {
+    public BlockEntity newBlockEntity(@NotNull BlockPos blockPos, @NotNull BlockState blockState) {
         return new SolarPanelBaseBE(blockPos, blockState);
     }
 
+    @SuppressWarnings("deprecation")
     @Override
-    public InteractionResult use(BlockState pState, Level pLevel, BlockPos pPos, Player pPlayer, InteractionHand pHand, BlockHitResult pHit) {
+    public @NotNull InteractionResult use(@NotNull BlockState pState, @NotNull Level pLevel, @NotNull BlockPos pPos, @NotNull Player pPlayer, @NotNull InteractionHand pHand, @NotNull BlockHitResult pHit) {
         BlockEntity blockEntityRaw = pLevel.getBlockEntity(pPos);
         if (!(blockEntityRaw instanceof SolarPanelBaseBE blockEntity)) {
             return InteractionResult.FAIL;
@@ -82,7 +85,7 @@ public class SolarPanelBaseBlock extends BaseTransparentBlock implements EntityB
     }
 
     @Override
-    public void setPlacedBy(Level pLevel, BlockPos pPos, BlockState pState, @Nullable LivingEntity pPlacer, ItemStack pStack) {
+    public void setPlacedBy(@NotNull Level pLevel, @NotNull BlockPos pPos, @NotNull BlockState pState, @Nullable LivingEntity pPlacer, @NotNull ItemStack pStack) {
         super.setPlacedBy(pLevel, pPos, pState, pPlacer, pStack);
 
         BlockEntity blockEntityRaw = pLevel.getBlockEntity(pPos);
@@ -122,7 +125,7 @@ public class SolarPanelBaseBlock extends BaseTransparentBlock implements EntityB
 
     @Nullable
     @Override
-    public <T extends BlockEntity> BlockEntityTicker<T> getTicker(Level pLevel, BlockState pState, BlockEntityType<T> pBlockEntityType) {
+    public <T extends BlockEntity> BlockEntityTicker<T> getTicker(Level pLevel, @NotNull BlockState pState, @NotNull BlockEntityType<T> pBlockEntityType) {
         if (pLevel.isClientSide()) {
             return null;
         }
@@ -131,7 +134,7 @@ public class SolarPanelBaseBlock extends BaseTransparentBlock implements EntityB
     }
 
     @Override
-    public VoxelShape getShape(BlockState pState, BlockGetter pLevel, BlockPos pPos, CollisionContext pContext) {
+    public @NotNull VoxelShape getShape(BlockState pState, BlockGetter pLevel, BlockPos pPos, CollisionContext pContext) {
         return Shapes.or(
             ShapeUtil.shapeFromDimension(0, 0, 0, 16, 2, 16),
             ShapeUtil.shapeFromDimension(2, 2, 2, 12, 12, 12),
