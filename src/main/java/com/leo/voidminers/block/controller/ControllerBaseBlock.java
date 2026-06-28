@@ -25,6 +25,7 @@ import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.Shapes;
 import net.minecraft.world.phys.shapes.VoxelShape;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 public class ControllerBaseBlock extends BaseTransparentBlock implements EntityBlock {
@@ -41,10 +42,12 @@ public class ControllerBaseBlock extends BaseTransparentBlock implements EntityB
         return name;
     }
 
+    @SuppressWarnings("deprecation")
     @Override
-    public void onRemove(BlockState pState, Level pLevel, BlockPos pPos, BlockState pNewState, boolean pIsMoving) {
+    public void onRemove(BlockState pState, @NotNull Level pLevel, @NotNull BlockPos pPos, BlockState pNewState, boolean pIsMoving) {
         if (pState.getBlock() != pNewState.getBlock()) {
             BlockEntity blockEntity = pLevel.getBlockEntity(pPos);
+            assert blockEntity != null;
             ((ControllerBaseBE) blockEntity).drops();
         }
 
@@ -53,12 +56,13 @@ public class ControllerBaseBlock extends BaseTransparentBlock implements EntityB
 
     @Nullable
     @Override
-    public BlockEntity newBlockEntity(BlockPos blockPos, BlockState blockState) {
+    public BlockEntity newBlockEntity(@NotNull BlockPos blockPos, @NotNull BlockState blockState) {
         return new ControllerBaseBE(blockPos, blockState);
     }
 
+    @SuppressWarnings("deprecation")
     @Override
-    public InteractionResult use(BlockState pState, Level pLevel, BlockPos pPos, Player pPlayer, InteractionHand pHand, BlockHitResult pHit) {
+    public @NotNull InteractionResult use(@NotNull BlockState pState, @NotNull Level pLevel, @NotNull BlockPos pPos, @NotNull Player pPlayer, @NotNull InteractionHand pHand, @NotNull BlockHitResult pHit) {
         ControllerBaseBE blockEntity = (ControllerBaseBE) pLevel.getBlockEntity(pPos);
 
         if (pLevel.isClientSide) {
@@ -66,6 +70,7 @@ public class ControllerBaseBlock extends BaseTransparentBlock implements EntityB
         }
 
         if (pPlayer.isCrouching()) {
+            assert blockEntity != null;
             blockEntity.updateShowStructure();
             return InteractionResult.CONSUME;
         }
@@ -84,6 +89,7 @@ public class ControllerBaseBlock extends BaseTransparentBlock implements EntityB
                 // Server-side handling: determine tier
                 int tier = id.endsWith("upgrade_max_storage_t3") ? 3 : id.endsWith("upgrade_max_storage_t2") ? 2 : 1;
 
+                assert blockEntity != null;
                 int current = blockEntity.getAppliedUpgradeTier();
                 if (current == tier) {
                     pPlayer.displayClientMessage(Component.literal("Upgrade already applied"), true);
@@ -100,7 +106,6 @@ public class ControllerBaseBlock extends BaseTransparentBlock implements EntityB
                 ItemStack previousStack = ItemStack.EMPTY;
                 if (current == 1) previousStack = new ItemStack(ModItems.UPGRADE_MAX_STORAGE_T1.get());
                 if (current == 2) previousStack = new ItemStack(ModItems.UPGRADE_MAX_STORAGE_T2.get());
-                if (current == 3) previousStack = new ItemStack(ModItems.UPGRADE_MAX_STORAGE_T3.get());
 
                 // Apply the new upgrade
                 blockEntity.setAppliedUpgradeTier(tier);
@@ -130,6 +135,7 @@ public class ControllerBaseBlock extends BaseTransparentBlock implements EntityB
             }
         }
 
+        assert blockEntity != null;
         for (Component component : blockEntity.getInteractionTooltip()) {
             pPlayer.displayClientMessage(component, false);
         }
@@ -139,7 +145,7 @@ public class ControllerBaseBlock extends BaseTransparentBlock implements EntityB
     }
 
     @Override
-    public void setPlacedBy(Level pLevel, BlockPos pPos, BlockState pState, @Nullable LivingEntity pPlacer, ItemStack pStack) {
+    public void setPlacedBy(@NotNull Level pLevel, @NotNull BlockPos pPos, @NotNull BlockState pState, @Nullable LivingEntity pPlacer, @NotNull ItemStack pStack) {
         super.setPlacedBy(pLevel, pPos, pState, pPlacer, pStack);
 
         ControllerBaseBE controller = ((ControllerBaseBE) pLevel.getBlockEntity(pPos));
@@ -147,6 +153,7 @@ public class ControllerBaseBlock extends BaseTransparentBlock implements EntityB
             controller = ((ControllerBaseBE) this.newBlockEntity(pPos, pState));
         }
 
+        assert controller != null;
         controller.setup(structure, name);
 
         // If placed by a player and this is the tier-1 (rubetine) miner, inform them there are no modifier slots
@@ -182,7 +189,7 @@ public class ControllerBaseBlock extends BaseTransparentBlock implements EntityB
 
     @Nullable
     @Override
-    public <T extends BlockEntity> BlockEntityTicker<T> getTicker(Level pLevel, BlockState pState, BlockEntityType<T> pBlockEntityType) {
+    public <T extends BlockEntity> BlockEntityTicker<T> getTicker(@NotNull Level pLevel, @NotNull BlockState pState, @NotNull BlockEntityType<T> pBlockEntityType) {
         if (pLevel.isClientSide()) {
             return null;
         }
@@ -191,7 +198,7 @@ public class ControllerBaseBlock extends BaseTransparentBlock implements EntityB
     }
 
     @Override
-    public VoxelShape getShape(BlockState pState, BlockGetter pLevel, BlockPos pPos, CollisionContext pContext) {
+    public @NotNull VoxelShape getShape(BlockState pState, BlockGetter pLevel, BlockPos pPos, CollisionContext pContext) {
         return Shapes.or(
             ShapeUtil.shapeFromDimension(0, 0, 0, 16, 2, 16),
             ShapeUtil.shapeFromDimension(2, 2, 2, 12, 12, 12),

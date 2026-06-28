@@ -10,6 +10,7 @@ import net.minecraftforge.event.level.BlockEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 
+@SuppressWarnings("unused")
 @Mod.EventBusSubscriber(modid = VoidMiners.MODID, bus = Mod.EventBusSubscriber.Bus.FORGE)
 public class CacheInvalidationHandler {
 
@@ -52,13 +53,16 @@ public class CacheInvalidationHandler {
         int minY = Math.max(level.getMinBuildHeight(), pos.getY() - 320);
         for (int y = pos.getY() - 1; y >= minY; y--) {
             BlockPos check = new BlockPos(pos.getX(), y, pos.getZ());
-            if (level.getBlockEntity(check) instanceof SolarPanelBaseBE be) {
+            var be = level.getBlockEntity(check);
+            if (be instanceof SolarPanelBaseBE sbe) {
                 // notify solar panel BE about change above
-                be.handleBlockAboveChanged();
+                sbe.handleBlockAboveChanged();
+            }
+            if (be instanceof ControllerBaseBE cbe) {
+                // invalidate controller structure cache so it re-evaluates next tick
+                cbe.handleStructureChanged();
             }
         }
     }
 
 }
-
-

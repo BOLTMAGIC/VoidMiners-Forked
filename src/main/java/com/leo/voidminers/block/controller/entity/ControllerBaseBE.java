@@ -37,6 +37,7 @@ import org.mangorage.mangomultiblock.core.misc.MultiblockMatchResult;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import com.leo.voidminers.multiblock.MultiblockScheduler;
 
 public class ControllerBaseBE extends BlockEntity {
 
@@ -93,6 +94,10 @@ public class ControllerBaseBE extends BlockEntity {
     private long lastProcessedGameTime = Long.MIN_VALUE;
     // Per-instance guard for void/bedrock checks
     private long lastVoidCheckGameTime = Long.MIN_VALUE;
+    // Per-instance guard for structure pattern checks (cache heavy multiblock matching)
+    private long lastStructureCheckGameTime = Long.MIN_VALUE;
+    // Snapshot of last successful structure match: map absolute positions -> block state
+    private Map<BlockPos, BlockState> lastStructureSnapshot = null;
 
     // Cache shared across controllers to avoid repeated column scans by multiple miners
     private static final ConcurrentHashMap<ColumnKey, CachedView> columnCache = new ConcurrentHashMap<>();
@@ -345,7 +350,10 @@ public class ControllerBaseBE extends BlockEntity {
             this.lastProcessedGameTime = gameTime;
         }
 
-        checkStructure(pLevel, pPos);
+        // Avoid running the heavy multiblock pattern matching every tick.
+        // Use a cached result and only re-run at most every MINER_CHECK_INTERVAL_TICKS
+        // or if we're close to finishing a cycle (progress lookahead).
+        maybeCheckStructure(pLevel, pPos);
 
         boolean hasVoidView = hasViewOnBedrockOrVoid(pPos);
 
@@ -381,7 +389,14 @@ public class ControllerBaseBE extends BlockEntity {
             return;
         }
 
-        active = foundStructure && hasVoidView;
+        // If we have never validated the structure yet (freshly placed controller), be optimistic
+        // and allow operation until the pre-production check runs. This means the BE may run
+        // a full cycle and then detect the structure is invalid just before producing.
+        boolean assumeStructure = foundStructure;
+        if (!foundStructure && this.lastStructureSnapshot == null && this.lastStructureCheckGameTime == Long.MIN_VALUE) {
+            assumeStructure = true;
+        }
+        active = assumeStructure && hasVoidView;
         assert level != null;
         level.sendBlockUpdated(pPos, getBlockState(), getBlockState(), 3);
 
@@ -546,15 +561,11 @@ public class ControllerBaseBE extends BlockEntity {
             return cached.hasView;
         }
 
-        // Perform the (optimized) column scan and update the cache
-        boolean result;
-
         // Only check down to the world's minimum build height, and at most 320 blocks
         int minY = level.getMinBuildHeight();
         int startY = pos.getY() - 1;
         int lowestY = Math.max(minY, pos.getY() - 320);
 
-        result = true; // assume true (void) until we find a blocking non-transparent
         for (int y = startY; y >= lowestY; y--) {
             BlockPos check = new BlockPos(pos.getX(), y, pos.getZ());
             BlockState state = level.getBlockState(check);
@@ -570,9 +581,8 @@ public class ControllerBaseBE extends BlockEntity {
             if (state.propagatesSkylightDown(level, check)) continue; // transparent by skylight rules
 
             // Non-air, non-fluid, non-transparent block blocks view
-            result = false;
             // store and return immediately
-            columnCache.put(key, new CachedView(result, gameTime));
+            columnCache.put(key, new CachedView(false, gameTime));
             this.lastVoidCheckGameTime = gameTime;
             return false;
         }
@@ -580,7 +590,7 @@ public class ControllerBaseBE extends BlockEntity {
         // No blockers found in range -> view to void
         columnCache.put(key, new CachedView(true, gameTime));
         this.lastVoidCheckGameTime = gameTime;
-        return result;
+        return true;
     }
 
     /**
@@ -593,10 +603,88 @@ public class ControllerBaseBE extends BlockEntity {
         columnCache.remove(key);
     }
 
+    /**
+     * Called when blocks in the multiblock may have changed and the structure cache must be invalidated.
+     * This forces a re-evaluation on the next tick.
+     */
+    public void handleStructureChanged() {
+        this.lastStructureCheckGameTime = Long.MIN_VALUE;
+        // Clear previous match state so we don't keep stale modifiers
+        this.foundStructure = false;
+        this.modifierMap.clear();
+        this.lastStructureSnapshot = null;
+        setChanged();
+    }
+
+    /**
+     * Run the expensive structure matching only when due.
+     */
+    private void maybeCheckStructure(Level pLevel, BlockPos pPos) {
+        if (pLevel == null) return;
+
+        long gameTime = pLevel.getGameTime();
+        int interval = ConfigLoader.getInstance().MINER_CHECK_INTERVAL_TICKS;
+        int lookahead = ConfigLoader.getInstance().MINER_PROGRESS_LOOKAHEAD;
+        // If we have a recent snapshot, do a cheap validation first
+        if (this.lastStructureSnapshot != null) {
+            if (isSnapshotStillValid(pLevel)) {
+                // Snapshot still valid: keep foundStructure/modifierMap and skip expensive check
+                this.lastStructureCheckGameTime = gameTime;
+                this.foundStructure = true;
+                return;
+            } else {
+                // Snapshot invalid. If we're not near completion, avoid running expensive full match now;
+                // mark structure as not found and clear modifiers. We'll run full check only when close to producing.
+                if (!(this.progress >= 0 && this.progress >= getMaxProgress() - lookahead)) {
+                    this.foundStructure = false;
+                    this.modifierMap.clear();
+                    this.lastStructureSnapshot = null;
+                    this.lastStructureCheckGameTime = gameTime;
+                    return;
+                }
+                // else fall through and run full check because we're about to produce items
+            }
+        } else {
+            // If we've checked recently, and we're not close to finishing, reuse the cached timing guard
+            if (this.lastStructureCheckGameTime != Long.MIN_VALUE) {
+                if (gameTime - this.lastStructureCheckGameTime < interval) {
+                    if (!(this.progress >= 0 && this.progress >= getMaxProgress() - lookahead)) {
+                        return;
+                    }
+                }
+            }
+        }
+
+        // Time to perform a fresh (possibly expensive) check - enqueue into global scheduler
+        this.lastStructureCheckGameTime = gameTime;
+        MultiblockScheduler.schedule(pLevel, pPos);
+    }
+
+    /**
+     * Cheaply validate that the last recorded structure snapshot still matches the world.
+     * Returns true if all recorded positions still have the same block type/state.
+     */
+    private boolean isSnapshotStillValid(Level lvl) {
+        if (lvl == null || this.lastStructureSnapshot == null) return false;
+        try {
+            for (Map.Entry<BlockPos, BlockState> e : this.lastStructureSnapshot.entrySet()) {
+                BlockPos pos = e.getKey();
+                BlockState recorded = e.getValue();
+                BlockState now = lvl.getBlockState(pos);
+                if (now.getBlock() != recorded.getBlock()) return false;
+                if (!now.equals(recorded)) return false;
+            }
+            return true;
+        } catch (Throwable t) {
+            return false;
+        }
+    }
+
     public void checkStructure(Level pLevel, BlockPos pPos) {
         // Reset before attempting to find a matching structure so stale state isn't preserved
         foundStructure = false;
         modifierMap.clear();
+        this.lastStructureSnapshot = null;
 
         // Try all rotations to allow the controller to be placed at any orientation
         for (Rotation rot : Rotation.values()) {
@@ -618,6 +706,17 @@ public class ControllerBaseBE extends BlockEntity {
                         modifierMap.put(block, modifier);
                     }
                 });
+
+            // Build a snapshot of the structure blocks so we can cheaply validate later
+            try {
+                Map<BlockPos, BlockState> snap = new HashMap<>();
+                for (BlockInWorld b : result.blocks()) {
+                    snap.put(b.getPos(), b.getState());
+                }
+                this.lastStructureSnapshot = snap;
+            } catch (Throwable ignored) {
+                this.lastStructureSnapshot = null;
+            }
 
             break;
         }

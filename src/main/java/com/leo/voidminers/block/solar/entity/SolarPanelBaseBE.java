@@ -37,6 +37,7 @@ import org.mangorage.mangomultiblock.core.misc.MultiblockMatchResult;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.Objects;
+import com.leo.voidminers.multiblock.MultiblockScheduler;
 
 public class SolarPanelBaseBE extends BlockEntity {
 
@@ -79,6 +80,8 @@ public class SolarPanelBaseBE extends BlockEntity {
 
     // Per-instance guard to prevent multiple executions inside the same world tick (e.g. from booster mods)
     private long lastProcessedGameTime = Long.MIN_VALUE;
+    // Per-instance guard for structure matching cache
+    private long lastStructureCheckGameTime = Long.MIN_VALUE;
 
     /**
      * Strict detection for always-day dimensions:
@@ -535,7 +538,9 @@ public class SolarPanelBaseBE extends BlockEntity {
             this.lastProcessedGameTime = gameTime;
         }
 
-        checkStructure(pLevel, pPos);
+        // Avoid running expensive multiblock detection every tick. Use cached result and only re-run
+        // every SOLAR_CHECK_INTERVAL_TICKS or when we haven't validated recently.
+        maybeCheckStructure(pLevel, pPos);
 
         boolean dimensionAllowed = this.name == null || ConfigLoader.getInstance().isSolarDimensionAllowed(Objects.requireNonNull(pLevel).dimension(), this.name);
         boolean blockedChanged = runtimeState.updateBlockedByDimension(!dimensionAllowed);
@@ -892,7 +897,10 @@ public class SolarPanelBaseBE extends BlockEntity {
                 if (!aboveState.isAir()) {
                     boolean allowedGlass = false;
                     try { allowedGlass = (aboveState.getBlock() == com.leo.voidminers.init.ModBlocks.GLASS_PANEL.get()); } catch (Exception ignored) {}
-                    if (!allowedGlass && !aboveState.propagatesSkylightDown(level, above)) {
+                    // Use a stricter light-blocking check: some mod blocks may report skylight propagation
+                    // but still block light in practice. Use getLightBlock to detect true blockers.
+                    int lightBlock = aboveState.getLightBlock(level, above);
+                    if (!allowedGlass && lightBlock > 0) {
                         // Immediate above block blocks sky
                         solarColumnCache.put(key, false);
                         solarColumnCheckedAt.put(key, gameTime);
@@ -921,12 +929,11 @@ public class SolarPanelBaseBE extends BlockEntity {
                     if (state.isAir()) continue;
                     boolean isGlass = false;
                     try { isGlass = (state.getBlock() == com.leo.voidminers.init.ModBlocks.GLASS_PANEL.get()); } catch (Exception ignored) {}
-                    boolean propagates = state.propagatesSkylightDown(level, checkPos);
-                    // encountered a block during fallback scan; record its properties for decision
+                    // use light-block check to determine opacity
+                    int lightBlock = state.getLightBlock(level, checkPos);
                     if (isGlass) continue;
-                    if (propagates) continue; // transparent
+                    if (lightBlock == 0) continue; // transparent
                     // opaque blocker found
-                    // blocked by an opaque non-glass block
                     blocked = true;
                     break;
                 }
@@ -954,7 +961,8 @@ public class SolarPanelBaseBE extends BlockEntity {
                             try {
                                 if (state.getBlock() == com.leo.voidminers.init.ModBlocks.GLASS_PANEL.get()) continue;
                             } catch (Exception ignored) {}
-                            if (state.propagatesSkylightDown(level, checkPos)) continue;
+                            int lb = state.getLightBlock(level, checkPos);
+                            if (lb == 0) continue;
                             return checkPos;
                         }
                         return null;
@@ -1064,5 +1072,33 @@ public class SolarPanelBaseBE extends BlockEntity {
         // push an immediate block update so clients and neighboring systems see the change
         level.sendBlockUpdated(this.getBlockPos(), this.getBlockState(), this.getBlockState(), 3);
         setChanged();
+    }
+
+    /**
+     * Called when the multiblock structure around this panel may have changed and cached
+     * structure/mutator data should be invalidated.
+     */
+    @SuppressWarnings("unused")
+    public void handleStructureChanged() {
+        this.lastStructureCheckGameTime = Long.MIN_VALUE;
+        this.foundStructure = false;
+        this.modifierMap.clear();
+        setChanged();
+    }
+
+    private void maybeCheckStructure(Level pLevel, BlockPos pPos) {
+        if (pLevel == null) return;
+        long gameTime = pLevel.getGameTime();
+        int interval = ConfigLoader.getInstance().SOLAR_CHECK_INTERVAL_TICKS;
+
+        if (this.lastStructureCheckGameTime != Long.MIN_VALUE) {
+            if (gameTime - this.lastStructureCheckGameTime < interval) {
+                return; // recent check - reuse results
+            }
+        }
+
+        this.lastStructureCheckGameTime = gameTime;
+        // enqueue for global scheduled full-check to avoid spikes
+        MultiblockScheduler.schedule(pLevel, pPos);
     }
 }
