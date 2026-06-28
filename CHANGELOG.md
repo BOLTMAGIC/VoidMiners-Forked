@@ -1,6 +1,7 @@
 # Changelog
 ## [1.20.1-1.9.25.9] - 2026-06-28
 - Performance: Enqueued expensive structure checks into a global scheduler to avoid TPS spikes.
+- Enhance miner upgrade tooltips: use placeholders for slot counts so values are inserted dynamically from configuration at runtime
 
 ## [1.20.1-1.9.25.8] - 2026-06-20
 - Performance: Optimized Void Miner visibility checks (reduced per-tick block scans).

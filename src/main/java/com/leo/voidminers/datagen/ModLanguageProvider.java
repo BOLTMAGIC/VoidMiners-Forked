@@ -27,9 +27,10 @@ public class ModLanguageProvider extends LanguageProvider {
         this.add("item.voidminers.upgrade_max_storage_t3", "Storage Upgrade T3");
 
         // Tier-specific tooltips (bottom of item tooltip)
-        this.add("tooltip.voidminers.upgrade_max_storage_t1", "Increases miner max storage by 3 slots. Can only be installed once per miner. Installing a higher tier replaces the current upgrade and returns it to the player.");
-        this.add("tooltip.voidminers.upgrade_max_storage_t2", "Increases miner max storage by 9 slots. Can only be installed once per miner. Installing a higher tier replaces the current upgrade and returns it to the player.");
-        this.add("tooltip.voidminers.upgrade_max_storage_t3", "Increases miner max storage by 27 slots. Can only be installed once per miner. Installing a higher tier replaces the current upgrade and returns it to the player.");
+        // Use placeholders so the actual slot count can be supplied from config at runtime
+        this.add("tooltip.voidminers.upgrade_max_storage_t1", "Increases miner max storage by %s slots. Can only be installed once per miner. Installing a higher tier replaces the current upgrade and returns it to the player.");
+        this.add("tooltip.voidminers.upgrade_max_storage_t2", "Increases miner max storage by %s slots. Can only be installed once per miner. Installing a higher tier replaces the current upgrade and returns it to the player.");
+        this.add("tooltip.voidminers.upgrade_max_storage_t3", "Increases miner max storage by %s slots. Can only be installed once per miner. Installing a higher tier replaces the current upgrade and returns it to the player.");
 
         this.add("gui." + VoidMiners.MODID + ".miner", "Tier %d Miner");
         this.add("gui." + VoidMiners.MODID + ".miners", "Miners");

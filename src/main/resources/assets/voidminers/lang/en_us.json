@@ -143,9 +143,9 @@
   "item.voidminers.upgrade_max_storage_t3": "Storage Upgrade T3",
   "tooltip.voidminers.upgrade_applied": "Applied upgrade: %s",
   "tooltip.voidminers.upgrade_ignored": "Note: only the highest tier applies; duplicates/lowers ignored",
-  "tooltip.voidminers.upgrade_max_storage_t1": "Right-click a miner with this upgrade to apply it.\nIncreases the miner's output inventory by +3 slots.\nOnly the highest installed tier is applied; non-cumulative. Consumed on use.",
-  "tooltip.voidminers.upgrade_max_storage_t2": "Right-click a miner with this upgrade to apply it.\nIncreases the miner's output inventory by +9 slots.\nOnly the highest installed tier is applied; non-cumulative. Consumed on use.",
-  "tooltip.voidminers.upgrade_max_storage_t3": "Right-click a miner with this upgrade to apply it.\nIncreases the miner's output inventory by +27 slots.\nOnly the highest installed tier is applied; non-cumulative. Consumed on use.",
+  "tooltip.voidminers.upgrade_max_storage_t1": "Right-click a miner with this upgrade to apply it.\nIncreases the miner's output inventory by +%s slots.\nOnly the highest installed tier is applied; non-cumulative. Consumed on use.",
+  "tooltip.voidminers.upgrade_max_storage_t2": "Right-click a miner with this upgrade to apply it.\nIncreases the miner's output inventory by +%s slots.\nOnly the highest installed tier is applied; non-cumulative. Consumed on use.",
+  "tooltip.voidminers.upgrade_max_storage_t3": "Right-click a miner with this upgrade to apply it.\nIncreases the miner's output inventory by +%s slots.\nOnly the highest installed tier is applied; non-cumulative. Consumed on use.",
   "message.voidminers.tier1.miner_no_mods": "Rubetine Void Miner has no slot for modifiers. These can be added starting at the second tier.",
   "message.voidminers.tier1.solar_no_mods": "Rubetine Solar Panel has no slot for modifiers. These can be added starting at the second tier."
 
