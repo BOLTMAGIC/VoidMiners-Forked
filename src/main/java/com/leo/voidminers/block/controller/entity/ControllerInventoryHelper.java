@@ -86,15 +86,25 @@ final class ControllerInventoryHelper {
             return false;
         }
 
+        // Determine the most likely output (highest weight) as representative blocked item
+        double highestWeight = -1.0;
+        ItemStack highestWeightStack = ItemStack.EMPTY;
         for (WeightedStack weightedStack : allOutputs) {
             ItemStack output = getBoostedStack(weightedStack.stack.copy());
+            // Track the highest-weight output (most likely)
+            if (weightedStack.weight > highestWeight) {
+                highestWeight = weightedStack.weight;
+                highestWeightStack = output;
+            }
             if (canInsertItem(output)) {
                 runtimeState.setLastOutputBlockReason(OutputBlockReason.NONE);
                 runtimeState.resetBlockedStack();
                 return true;
-            } else if (runtimeState.getLastBlockedStack().isEmpty()) {
-                runtimeState.setLastBlockedStack(output);
             }
+        }
+        // If none fit, show the highest-weight (most likely) output as blocked
+        if (!highestWeightStack.isEmpty()) {
+            runtimeState.setLastBlockedStack(highestWeightStack);
         }
 
         runtimeState.setLastOutputBlockReason(OutputBlockReason.NO_VALID_SLOT);
