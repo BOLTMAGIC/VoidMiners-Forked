@@ -323,8 +323,8 @@ final class ControllerTooltipBuilder {
                     .append(Component.literal(String.format("%.2f×", currentMaxItemMod)).withStyle(ChatFormatting.LIGHT_PURPLE)));
 
             tooltip.add(Component.literal("Either use less Item Modifiers or use a better Storage Upgrade").withStyle(ChatFormatting.GRAY));
+        } else {
+            tooltip.add(Component.literal("Miner's inventory is too full to accept another batch of items, empty it.").withStyle(ChatFormatting.GRAY));
         }
-
-        tooltip.add(Component.literal("Miner's inventory is too full to accept another batch of items, empty it.").withStyle(ChatFormatting.GRAY));
     }
 }
