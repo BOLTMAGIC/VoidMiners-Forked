@@ -778,6 +778,10 @@ public class ControllerBaseBE extends BlockEntity {
         return appliedUpgradeTier;
     }
 
+    public int getBaseOutputSlots() {
+        return BASE_OUTPUT_SLOTS;
+    }
+
     public void setAppliedUpgradeTier(int tier) {
         this.appliedUpgradeTier = tier;
         // Recalculate storage immediately when tier changes

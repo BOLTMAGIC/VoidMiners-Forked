@@ -8,7 +8,6 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.state.pattern.BlockInWorld;
-import net.minecraftforge.items.ItemStackHandler;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -43,18 +42,13 @@ final class ControllerTooltipBuilder {
 
             tooltip.add(Component.literal("🛠 CONFIG PATH: ").withStyle(ChatFormatting.AQUA)
                 .append(Component.literal("config/void-miners.json5 → MINER_DIMENSION_SETTINGS").withStyle(ChatFormatting.WHITE)));
-
-            return withUpgradeAtBottom(controller, tooltip);
         }
 
         if (name == null) {
             tooltip.add(Component.literal("❓ STATUS: ").withStyle(ChatFormatting.YELLOW)
                 .append(Component.literal("Miner tier not initialized").withStyle(ChatFormatting.GRAY)));
-            return withUpgradeAtBottom(controller, tooltip);
         }
 
-        int baseEnergyTick = ConfigLoader.getInstance().getMinerConfig(name).energyTick();
-        int baseDuration = ConfigLoader.getInstance().getMinerConfig(name).duration();
         int energyStorage = energyHandler.getMaxEnergyStored();
         int currentEnergy = energyHandler.getEnergyStored();
 
@@ -67,6 +61,25 @@ final class ControllerTooltipBuilder {
             speedMod *= entry.getValue().speed();
             itemMod *= entry.getValue().item();
         }
+
+        int extraSlots = 0;
+        int maxExtraSlots = 0;
+        String storageUpgradeDisplayName = "";
+
+        ConfigLoader cfg = ConfigLoader.getInstance();
+        // get the applied upgrade tier stored on the block (appliedUpgradeTier)
+        int appliedTier = controller.getAppliedUpgradeTier();
+        if (appliedTier == 3) {
+            extraSlots = cfg.UPGRADE_T3_SLOTS;
+            storageUpgradeDisplayName = "Storage Upgrade T3";
+        } else if (appliedTier == 2) {
+            extraSlots = cfg.UPGRADE_T2_SLOTS;
+            storageUpgradeDisplayName = "Storage Upgrade T2";
+        } else if (appliedTier == 1) {
+            extraSlots = cfg.UPGRADE_T1_SLOTS;
+            storageUpgradeDisplayName = "Storage Upgrade T1";
+        }
+        maxExtraSlots = cfg.UPGRADE_T3_SLOTS;
 
         if (controller.isWorkingInternal()) {
             tooltip.add(Component.literal("═══ ").withStyle(ChatFormatting.GRAY)
@@ -102,7 +115,8 @@ final class ControllerTooltipBuilder {
                 .append(Component.literal(String.format("%.1f%%", progressPercent * 100)).withStyle(ChatFormatting.WHITE)));
             tooltip.add(Component.literal(progressBar));
 
-            return withUpgradeAtBottom(controller, tooltip);
+            tooltip.add(getUpgradeInfoText(storageUpgradeDisplayName, extraSlots));
+            return tooltip;
         }
 
         if (controller.isActiveInternal()) {
@@ -157,8 +171,10 @@ final class ControllerTooltipBuilder {
                 } else if (!runtimeState.getLastBlockedStack().isEmpty()) {
                     tooltip.add(Component.literal("📦 BLOCKED ITEM: ").withStyle(ChatFormatting.YELLOW)
                         .append(runtimeState.getLastBlockedStack().getHoverName().copy().withStyle(ChatFormatting.WHITE))
-                        .append(Component.literal(String.format(" × %,d", runtimeState.getLastBlockedStack().getCount())).withStyle(ChatFormatting.WHITE))
-                        .append(Component.literal(" cannot fit in the output inventory.").withStyle(ChatFormatting.GRAY)));
+                        .append(Component.literal(String.format(" × %,d", runtimeState.getLastBlockedStack().getCount())).withStyle(ChatFormatting.WHITE)));
+
+                    getBlockedReasonText(extraSlots, maxExtraSlots, itemMod, controller, tooltip);
+
                 } else {
                     tooltip.add(Component.literal("📦 OUTPUT: ").withStyle(ChatFormatting.YELLOW)
                         .append(Component.literal("No slot can accept the next output. Clear space or provide matching stacks.").withStyle(ChatFormatting.GRAY)));
@@ -173,7 +189,8 @@ final class ControllerTooltipBuilder {
                     .append(Component.literal("Awaiting next energy sync. If the issue persists, check external power supply.").withStyle(ChatFormatting.GRAY)));
             }
 
-            return withUpgradeAtBottom(controller, tooltip);
+            tooltip.add(getUpgradeInfoText(storageUpgradeDisplayName, extraSlots));
+            return tooltip;
         }
 
         if (controller.hasFoundStructureInternal()) {
@@ -190,7 +207,8 @@ final class ControllerTooltipBuilder {
             tooltip.add(Component.literal("💡 TIP: ").withStyle(ChatFormatting.AQUA)
                 .append(Component.literal("Make sure center block has clear path to bedrock!").withStyle(ChatFormatting.WHITE)));
 
-            return withUpgradeAtBottom(controller, tooltip);
+            tooltip.add(getUpgradeInfoText(storageUpgradeDisplayName, extraSlots));
+            return tooltip;
         }
 
         tooltip.add(Component.literal("═══ ").withStyle(ChatFormatting.GRAY)
@@ -212,12 +230,8 @@ final class ControllerTooltipBuilder {
                 .append(Component.literal(String.valueOf(integer)).withStyle(ChatFormatting.RED))));
         }
 
-        return withUpgradeAtBottom(controller, tooltip);
-    }
+        tooltip.add(getUpgradeInfoText(storageUpgradeDisplayName, extraSlots));
 
-    // Helper: append upgrade info at the bottom and return the tooltip
-    private static List<Component> withUpgradeAtBottom(ControllerBaseBE controller, List<Component> tooltip) {
-        addUpgradeInfo(controller, tooltip);
         return tooltip;
     }
 
@@ -286,47 +300,31 @@ final class ControllerTooltipBuilder {
         return bar + "§r";
     }
 
-    private static void addUpgradeInfo(ControllerBaseBE controller, List<Component> tooltip) {
-        // Show the applied upgrade tier stored on the block (appliedUpgradeTier)
-        int appliedTier = controller.getAppliedUpgradeTier();
-        if (appliedTier <= 0) {
-            // No applied upgrade
-            return;
-        }
-
-        ConfigLoader cfg = ConfigLoader.getInstance();
-        int extraSlots = 0;
-        String displayName = "";
-        if (appliedTier == 3) {
-            extraSlots = cfg.UPGRADE_T3_SLOTS;
-            displayName = "Storage Upgrade T3";
-        } else if (appliedTier == 2) {
-            extraSlots = cfg.UPGRADE_T2_SLOTS;
-            displayName = "Storage Upgrade T2";
-        } else if (appliedTier == 1) {
-            extraSlots = cfg.UPGRADE_T1_SLOTS;
-            displayName = "Storage Upgrade T1";
-        }
-
-        tooltip.add(Component.literal("⚙ UPGRADE: ").withStyle(ChatFormatting.AQUA)
+    private static Component getUpgradeInfoText(String displayName, int extraSlots) {
+        return Component.literal("⚙ UPGRADE: ").withStyle(ChatFormatting.AQUA)
             .append(Component.literal(displayName).withStyle(ChatFormatting.WHITE))
-            .append(Component.literal(" (+" + extraSlots + " slots)").withStyle(ChatFormatting.GRAY)));
+            .append(Component.literal(" (+" + extraSlots + " slots)").withStyle(ChatFormatting.GRAY));
+    }
 
-        // If the upgradeHandler still contains items, warn that they are ignored (since applied tier is used)
-        ItemStackHandler upgradeHandler = controller.getUpgradeHandlerInternal();
-        boolean hasItemsInHandler = false;
-        for (int i = 0; i < upgradeHandler.getSlots(); i++) {
-            if (!upgradeHandler.getStackInSlot(i).isEmpty()) {
-                hasItemsInHandler = true;
-                break;
-            }
+    private static void getBlockedReasonText(int extraSlots, int maxExtraSlots, float itemMod, ControllerBaseBE controller, List<Component> tooltip) {
+        float itemModToSlots = itemMod / 64;
+        int totalSlots = extraSlots + controller.getBaseOutputSlots();
+        float currentMaxItemMod = totalSlots * 64;
+        int maxTotalSlots = maxExtraSlots + controller.getBaseOutputSlots();
+        float maxItemMod = maxTotalSlots * 64;
+
+        tooltip.add(Component.literal("📦 Reason: ").withStyle(ChatFormatting.YELLOW));
+
+        if (itemModToSlots > maxTotalSlots) {
+            tooltip.add(Component.literal("Too much Item Modifiers, max is : ").withStyle(ChatFormatting.GRAY)
+                .append(Component.literal(String.format("%.2f×", maxItemMod)).withStyle(ChatFormatting.LIGHT_PURPLE)));
+        } else if (itemModToSlots > totalSlots) {
+            tooltip.add(Component.literal("Too much Item Modifiers, current max is : ").withStyle(ChatFormatting.GRAY)
+                    .append(Component.literal(String.format("%.2f×", currentMaxItemMod)).withStyle(ChatFormatting.LIGHT_PURPLE)));
+
+            tooltip.add(Component.literal("Either use less Item Modifiers or use a better Storage Upgrade").withStyle(ChatFormatting.GRAY));
         }
 
-        if (hasItemsInHandler) {
-            tooltip.add(Component.literal("⚠ Note: The controller applies the upgrade directly; items in the upgrade slots are ignored.").withStyle(ChatFormatting.YELLOW));
-        }
-
-        // Visual separator
-        tooltip.add(Component.literal(" ").withStyle(ChatFormatting.GRAY));
+        tooltip.add(Component.literal("Miner's inventory is too full to accept another batch of items, empty it.").withStyle(ChatFormatting.GRAY));
     }
 }
