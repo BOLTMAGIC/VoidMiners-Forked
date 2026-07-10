@@ -1,4 +1,9 @@
 # Changelog
+
+## [1.20.1-1.9.26.0 + 1] - 2026-07-10
+- Fixed Tooltips
+- rework tooltips to include the reason why the items are blocked
+
 ## [1.20.1-1.9.25.9] - 2026-06-28
 - Performance: Enqueued expensive structure checks into a global scheduler to avoid TPS spikes.
 - Enhance miner upgrade tooltips: use placeholders for slot counts so values are inserted dynamically from configuration at runtime
