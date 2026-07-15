@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.20.1-1.9.26.2] - 2026-07-16
+- Hold shift to see full E numbers (e.g. 1.45E-7%) in the Void Miner JEI tab.
+- Also, can hover over the recipe to see them.
+
 ## [1.20.1-1.9.26.0 + 1] - 2026-07-10
 - Fixed Tooltips
 - rework tooltips to include the reason why the items are blocked
