@@ -91,18 +91,46 @@ public class MinerCategory implements IRecipeCategory<MinerRecipe> {
                 percent = (weight / total) * 100.0;
             }
         }
-        String percentStr = formatPercent(percent);
+        String percentDefault = formatPercent(percent);
+        String percentFull = percentDefault;
+        if (percentDefault.contains("E") || percentDefault.contains("e")) {
+            percentFull = formatPercentFull(percent);
+        }
 
-        // If color-blind mode is enabled, remove all colors and use the default text color.
+        // Measure widths for both representations to avoid hovering jitter when switching.
+        Font font = Minecraft.getInstance().font;
+        int widthDefault = font.width(Component.literal(percentDefault + "%"));
+        int widthFull = font.width(Component.literal(percentFull + "%"));
+        int textWidth = Math.max(widthDefault, widthFull);
+
+        // For JEI we display only the percent Component (centered). The dimension icon will be placed at the far right.
+        Component displayComponent;
+        String dimensionName = recipe.dimension().location().toLanguageKey();
+
+        ResourceLocation texture = ResourceLocation.fromNamespaceAndPath(VoidMiners.MODID, "textures/gui/icon/" + getDimensionIcon(recipe.dimension()) + ".png");
+
+        // Calculate text width and center percent within the category background (width = 125)
+        int backgroundWidth = 125;
+        int percentX = Math.max(0, (backgroundWidth - textWidth) / 2);
+
+        // Place the dimension icon at the far right with small padding
+        int iconX = backgroundWidth - 16 - 4; // icon width 16, padding 4
+
+        // Determine whether the mouse is hovering the percent area (use conservative height)
+        int textHeight = 12; // safe height for the font area
+        boolean hoveringPercent = isHovering(mouseX, mouseY, percentX, 0, percentX + textWidth, textHeight);
+
+        // Decide which string to display: default or full precision when hovered/shift held
+        boolean shift = false;
+        try { shift = net.minecraft.client.gui.screens.Screen.hasShiftDown(); } catch (Throwable ignored) {}
+        String percentDisplayed = (hoveringPercent || shift) ? percentFull : percentDefault;
+
+        // Build percent component with coloring / color-blind support
         boolean cb = ConfigLoader.getInstance().COLOR_BLIND_PERCENT;
-        Component percentComponent;
         if (cb) {
-            // Color-blind mode: no coloring at all
-            percentComponent = Component.literal(percentStr + "%");
+            displayComponent = Component.literal(percentDisplayed + "%");
         } else {
-            // choose color based on percent ranges
             ChatFormatting color;
-            // default palette
             if (percent <= 0.0) {
                 color = ChatFormatting.DARK_RED;
             } else if (percent <= 10.0) {
@@ -114,26 +142,8 @@ public class MinerCategory implements IRecipeCategory<MinerRecipe> {
             } else {
                 color = ChatFormatting.DARK_GREEN;
             }
-
-            // include percent sign inside the styled component so the '%' is colored as well
-            percentComponent = Component.literal(percentStr + "%").withStyle(color);
+            displayComponent = Component.literal(percentDisplayed + "%").withStyle(color);
         }
-
-        // For JEI we display only the percent Component (centered). The dimension icon will be placed at the far right.
-        Component displayComponent = percentComponent;
-        String dimensionName = recipe.dimension().location().toLanguageKey();
-
-        ResourceLocation texture = ResourceLocation.fromNamespaceAndPath(VoidMiners.MODID, "textures/gui/icon/" + getDimensionIcon(recipe.dimension()) + ".png");
-
-        Font font = Minecraft.getInstance().font;
-
-        // Calculate text width and center percent within the category background (width = 125)
-        int textWidth = font.width(displayComponent);
-        int backgroundWidth = 125;
-        int percentX = Math.max(0, (backgroundWidth - textWidth) / 2);
-
-        // Place the dimension icon at the far right with small padding
-        int iconX = backgroundWidth - 16 - 4; // icon width 16, padding 4
 
         // Draw percent (may be colored) centered
         guiGraphics.drawString(font, displayComponent, percentX, 4, 0xFFFFFFFF);
@@ -148,6 +158,8 @@ public class MinerCategory implements IRecipeCategory<MinerRecipe> {
             16,
             16
         );
+
+        // no tooltip on percent; hovering changes the displayed text in-place
 
         if (!isHovering(mouseX, mouseY, iconX, 0, iconX + 16, 16)) {
             return;
@@ -177,6 +189,25 @@ public class MinerCategory implements IRecipeCategory<MinerRecipe> {
 
         // Return the rounded value as string. Use toString() (may use exponential notation for very small numbers).
         return bdRounded.toString();
+    }
+
+    // Full-precision percent formatting: show up to 10 decimal places and avoid
+    // exponential notation by using BigDecimal.toPlainString where appropriate.
+    public static String formatPercentFull(double number) {
+        if (number == 0.0) return "0";
+
+        java.math.BigDecimal bd = java.math.BigDecimal.valueOf(number);
+        java.math.BigDecimal threshold = new java.math.BigDecimal("0.00000000001"); // 1e-11
+        if (bd.abs().compareTo(threshold) < 0) {
+            return "<0.00000000001";
+        }
+
+        java.math.BigDecimal scaled = bd.setScale(10, java.math.RoundingMode.DOWN);
+        String plain = scaled.stripTrailingZeros().toPlainString();
+        if (plain.contains("E") || plain.contains("e")) {
+            plain = bd.toPlainString();
+        }
+        return plain;
     }
 
     public static String getDimensionIcon(ResourceKey<Level> dimension) {
